@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Controllers\HomeoldController.cs" />
+    <Compile Remove="Models\ProductionMetricold.cs" />
+    <Compile Remove="Services\ProductionServiceold.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Remove="Views\Home\Indexold.cshtml" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
+    <PackageReference Include="Dapper" Version="2.1.35" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="wwwroot\Images\syrma-logo.png" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,840 @@
+@model ProductionDashboard.Models.DashboardViewModel
+@{
+    ViewData["Title"] = "Production Dashboard";
+    var cols = new[] { "FCT1", "FCT2", "FCT3", "RF1", "RF2", "RTC1", "VOL1" };
+    var shifts = new[]
+    {
+        ("Night",     "Night Shift",     "8:00 PM – 4:00 AM",  "shift-night",     Model.NightShift),
+        ("Morning",   "Morning Shift",   "4:00 AM – 12:00 PM", "shift-morning",   Model.MorningShift),
+        ("Afternoon", "Afternoon Shift", "12:00 PM – 8:00 PM", "shift-afternoon", Model.AfternoonShift),
+    };
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Production Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --bg-base:       #0a0e1a;
+            --bg-panel:      #0f1628;
+            --bg-card:       #131c35;
+            --bg-header:     #0b1220;
+            --accent-blue:   #00c8ff;
+            --accent-green:  #00ff9d;
+            --accent-amber:  #ffb300;
+            --accent-red:    #ff3d6b;
+            --accent-purple: #a855f7;
+            --text-primary:  #e2e8f8;
+            --text-muted:    #6b7a9e;
+            --border-glow:   rgba(0,200,255,0.18);
+            --shift-night:   #a855f7;
+            --shift-morning: #00c8ff;
+            --shift-afternoon: #00ff9d;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; }
+
+        body {
+            background: var(--bg-base);
+            color: var(--text-primary);
+            font-family: 'Exo 2', sans-serif;
+            min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0,200,255,0.06) 0%, transparent 70%),
+                repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,200,255,0.03) 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,200,255,0.03) 40px);
+        }
+
+        /* ── Header ─────────────────────────────────────── */
+        .app-header {
+            background: linear-gradient(135deg, #060b18 0%, #0d1830 100%);
+            border-bottom: 1px solid var(--border-glow);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 30px rgba(0,200,255,0.08);
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .brand-icon {
+            width: 42px; height: 42px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 0 20px rgba(0,200,255,0.4);
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+        @keyframes pulse-glow {
+            0%,100% { box-shadow: 0 0 20px rgba(0,200,255,0.4); }
+            50%      { box-shadow: 0 0 35px rgba(0,200,255,0.7); }
+        }
+        .brand-title {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .brand-sub {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(0,255,157,0.1);
+            border: 1px solid rgba(0,255,157,0.3);
+            border-radius: 20px;
+            padding: 0.3rem 0.8rem;
+            font-size: 0.75rem;
+            color: var(--accent-green);
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        .live-dot {
+            width: 8px; height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: blink 1.2s ease-in-out infinite;
+        }
+        @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+        .clock {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1.1rem;
+            color: var(--accent-blue);
+            letter-spacing: 2px;
+        }
+        .refresh-badge {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        /* ── Product Selector ─────────────────────────────── */
+        .product-bar {
+            padding: 1.2rem 2rem;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-glow);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .product-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+        .product-select-wrapper {
+            position: relative;
+        }
+        .product-select {
+            background: var(--bg-card);
+            color: var(--accent-blue);
+            border: 1px solid var(--border-glow);
+            border-radius: 8px;
+            padding: 0.5rem 2.5rem 0.5rem 1rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            cursor: pointer;
+            outline: none;
+            appearance: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            min-width: 140px;
+        }
+        .product-select:hover, .product-select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 15px rgba(0,200,255,0.2);
+        }
+        .product-select-icon {
+            position: absolute;
+            right: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--accent-blue);
+            pointer-events: none;
+            font-size: 0.75rem;
+        }
+        .refresh-btn {
+            background: linear-gradient(135deg, rgba(0,200,255,0.1), rgba(168,85,247,0.1));
+            border: 1px solid var(--border-glow);
+            color: var(--accent-blue);
+            border-radius: 8px;
+            padding: 0.5rem 1.2rem;
+            font-family: 'Exo 2', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .refresh-btn:hover {
+            background: linear-gradient(135deg, rgba(0,200,255,0.2), rgba(168,85,247,0.2));
+            box-shadow: 0 0 20px rgba(0,200,255,0.3);
+            transform: translateY(-1px);
+        }
+        .refresh-btn.spinning i { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Main Content ─────────────────────────────────── */
+        .main-content { padding: 1.5rem 2rem; }
+
+        /* ── Shift Panel ──────────────────────────────────── */
+        .shift-panel {
+            margin-bottom: 2rem;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.07);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            animation: slideUp 0.5s ease both;
+        }
+        .shift-panel:nth-child(2) { animation-delay: 0.1s; }
+        .shift-panel:nth-child(3) { animation-delay: 0.2s; }
+        @keyframes slideUp {
+            from { opacity:0; transform:translateY(20px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+
+        .shift-header {
+            padding: 0.9rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+        .shift-header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.08;
+        }
+        .shift-night   .shift-header { background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(168,85,247,0.05)); border-bottom: 2px solid rgba(168,85,247,0.4); }
+        .shift-morning .shift-header { background: linear-gradient(135deg, rgba(0,200,255,0.2), rgba(0,200,255,0.05)); border-bottom: 2px solid rgba(0,200,255,0.4); }
+        .shift-afternoon .shift-header { background: linear-gradient(135deg, rgba(0,255,157,0.15), rgba(0,255,157,0.04)); border-bottom: 2px solid rgba(0,255,157,0.4); }
+
+        .shift-title-group { display: flex; align-items: center; gap: 1rem; }
+        .shift-icon { font-size: 1.3rem; }
+        .shift-night .shift-icon   { color: var(--shift-night); }
+        .shift-morning .shift-icon { color: var(--shift-morning); }
+        .shift-afternoon .shift-icon { color: var(--shift-afternoon); }
+
+        .shift-name {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .shift-night .shift-name    { color: var(--shift-night); }
+        .shift-morning .shift-name  { color: var(--shift-morning); }
+        .shift-afternoon .shift-name { color: var(--shift-afternoon); }
+
+        .shift-time {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+        .shift-stats {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        .stat-item { display: flex; flex-direction: column; align-items: flex-end; }
+        .stat-val { font-family: 'Share Tech Mono', monospace; font-size: 0.9rem; }
+        .stat-lbl { opacity: 0.6; letter-spacing: 1px; }
+
+        /* ── Table ────────────────────────────────────────── */
+        .table-wrap {
+            overflow-x: auto;
+            background: var(--bg-panel);
+        }
+        table.prod-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            min-width: 900px;
+        }
+        .prod-table th, .prod-table td {
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+            padding: 0;
+        }
+        /* Top header row */
+        .th-hour {
+            background: var(--bg-header);
+            color: var(--text-muted);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 0.5rem 0.4rem;
+            white-space: nowrap;
+            position: sticky;
+            left: 0;
+            z-index: 2;
+        }
+        .th-metric {
+            background: var(--bg-header);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            padding: 0.5rem 0.4rem;
+            color: var(--accent-blue);
+        }
+        .th-sub {
+            font-size: 0.62rem;
+            font-weight: 500;
+            letter-spacing: 1.5px;
+            padding: 0.3rem 0.4rem;
+            text-transform: uppercase;
+        }
+        .th-sub.sub-target { background: rgba(0,200,255,0.06); color: var(--accent-blue); }
+        .th-sub.sub-actual { background: rgba(0,255,157,0.06); color: var(--accent-green); }
+        .th-hour-label {
+            background: var(--bg-header);
+            color: var(--text-muted);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+            padding: 0.3rem;
+        }
+
+        /* Data cells */
+        .td-hour {
+            background: var(--bg-card);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            padding: 0.55rem 0.5rem;
+            white-space: nowrap;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            border-right: 1px solid rgba(255,255,255,0.1) !important;
+        }
+        .td-val {
+            padding: 0.45rem 0.35rem;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            transition: background 0.3s;
+        }
+        .td-val.target { color: rgba(0,200,255,0.7); background: rgba(0,200,255,0.03); }
+        .td-val.actual-ok   { color: var(--accent-green); background: rgba(0,255,157,0.05); }
+        .td-val.actual-warn { color: var(--accent-amber); background: rgba(255,179,0,0.05); }
+        .td-val.actual-bad  { color: var(--accent-red);   background: rgba(255,61,107,0.05); }
+
+        /* Cumulative row */
+        .cum-section { background: var(--bg-panel); }
+        .cum-header-row th {
+            background: rgba(168,85,247,0.08);
+            border-top: 2px solid rgba(168,85,247,0.3) !important;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.85rem;
+            color: var(--accent-purple);
+            font-weight: 700;
+            letter-spacing: 2px;
+            padding: 0.5rem;
+        }
+        .cum-data-row { animation: fadeIn 0.4s ease both; }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+        .td-cumval {
+            padding: 0.4rem 0.35rem;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.78rem;
+            background: rgba(168,85,247,0.04);
+            color: var(--accent-purple);
+            transition: all 0.5s ease;
+        }
+        .td-cumval.cum-target {
+            color: rgba(0,200,255,0.6);
+            background: rgba(0,200,255,0.04);
+        }
+        .td-cumval.updated {
+            animation: flash 0.6s ease;
+        }
+        @keyframes flash {
+            0%   { background: rgba(168,85,247,0.3); }
+            100% { background: rgba(168,85,247,0.04); }
+        }
+
+        .cum-label-cell {
+            background: rgba(168,85,247,0.08);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--accent-purple);
+            letter-spacing: 1px;
+            padding: 0.4rem 0.5rem;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            white-space: nowrap;
+        }
+        .cum-hour-lbl {
+            font-size: 0.6rem;
+            display: block;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        /* ── Scrollbar ────────────────────────────────────── */
+        ::-webkit-scrollbar { height: 5px; width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg-base); }
+        ::-webkit-scrollbar-thumb { background: rgba(0,200,255,0.3); border-radius: 3px; }
+
+        /* ── Progress bar in shift-stats ─────────────────── */
+        .mini-progress {
+            width: 80px;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 3px;
+        }
+        .mini-progress-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 1s ease;
+        }
+        .ok  .mini-progress-fill { background: var(--accent-green); }
+        .warn .mini-progress-fill { background: var(--accent-amber); }
+        .bad  .mini-progress-fill { background: var(--accent-red); }
+
+        /* ── Footer ──────────────────────────────────────── */
+        .app-footer {
+            padding: 1rem 2rem;
+            border-top: 1px solid var(--border-glow);
+            background: var(--bg-panel);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+        .countdown-bar {
+            width: 120px;
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .countdown-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 2px;
+            transition: width 1s linear;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════ -->
+<header class="app-header">
+    <div class="brand">
+        <div class="brand-icon"><i class="fas fa-industry"></i></div>
+        <div>
+            <div class="brand-title">PRODUCTION MONITOR</div>
+            <div class="brand-sub">Real-time shift dashboard</div>
+        </div>
+    </div>
+    <div class="header-meta">
+        <div class="live-badge">
+            <div class="live-dot"></div>
+            LIVE
+        </div>
+        <div class="clock" id="clock">--:--:--</div>
+        <div class="refresh-badge">
+            <i class="fas fa-sync-alt"></i>
+            Auto-refresh: <span id="countdown-text">60s</span>
+        </div>
+    </div>
+</header>
+
+<!-- ══════════════════════════════════════════════
+     PRODUCT SELECTOR BAR
+═══════════════════════════════════════════════ -->
+<div class="product-bar">
+    <span class="product-label"><i class="fas fa-box me-1"></i> Product</span>
+    <div class="product-select-wrapper">
+        <select class="product-select" id="productSelect" onchange="changeProduct(this.value)">
+            @foreach (var p in Model.Products)
+            {
+                <option value="@p" @(p == Model.SelectedProduct ? "selected" : "")>@p</option>
+            }
+        </select>
+        <i class="fas fa-chevron-down product-select-icon"></i>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">
+        <i class="fas fa-sync-alt" id="refreshIcon"></i> REFRESH
+    </button>
+    <div class="ms-auto" style="font-size:0.75rem; color:var(--text-muted);">
+        <i class="fas fa-calendar-day me-1"></i>
+        <span id="dateLabel"></span>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MAIN
+═══════════════════════════════════════════════ -->
+<main class="main-content" id="dashboardMain">
+@{
+    var shiftIcons = new Dictionary<string,string> {
+        ["Night"] = "fa-moon", ["Morning"] = "fa-sun", ["Afternoon"] = "fa-cloud-sun"]
+    };
+}
+@foreach (var (shiftKey, shiftLabel, shiftTime, shiftClass, metrics) in shifts)
+{
+    <div class="shift-panel @shiftClass" id="panel-@shiftKey">
+        <div class="shift-header">
+            <div class="shift-title-group">
+                <i class="fas @shiftIcons[shiftKey] shift-icon"></i>
+                <div>
+                    <div class="shift-name">@shiftLabel</div>
+                    <div class="shift-time">@shiftTime</div>
+                </div>
+            </div>
+            <div class="shift-stats" id="stats-@shiftKey">
+                @* Filled by JS *@
+            </div>
+        </div>
+
+        <div class="table-wrap">
+        <table class="prod-table" id="table-@shiftKey">
+            <!-- ── Header Row 1: columns ───────────────── -->
+            <thead>
+            <tr>
+                <th class="th-hour" rowspan="2">HOUR</th>
+                @foreach (var col in cols)
+                {
+                    <th class="th-metric" colspan="2">@col</th>
+                }
+            </tr>
+            <!-- ── Header Row 2: Target / Actual ───────── -->
+            <tr>
+                @foreach (var col in cols)
+                {
+                    <th class="th-sub sub-target">Target</th>
+                    <th class="th-sub sub-actual">Actual</th>
+                }
+            </tr>
+            </thead>
+
+            <!-- ── Data rows (8 hours) ───────────────────── -->
+            <tbody>
+            @for (int h = 1; h <= 8; h++)
+            {
+                var row = metrics.FirstOrDefault(m => m.HourSlot == h);
+                <tr class="data-row" data-hour="@h">
+                    <td class="td-hour">H@h</td>
+                    @foreach (var col in cols)
+                    {
+                        decimal tgt = 0, act = 0;
+                        if (row != null)
+                        {
+                            (tgt, act) = col switch {
+                                "FCT1" => (row.FCT1_Target, row.FCT1_Actual),
+                                "FCT2" => (row.FCT2_Target, row.FCT2_Actual),
+                                "FCT3" => (row.FCT3_Target, row.FCT3_Actual),
+                                "RF1"  => (row.RF1_Target,  row.RF1_Actual),
+                                "RF2"  => (row.RF2_Target,  row.RF2_Actual),
+                                "RTC1" => (row.RTC1_Target, row.RTC1_Actual),
+                                "VOL1" => (row.VOL1_Target, row.VOL1_Actual),
+                                _      => (0m, 0m)
+                            };
+                        }
+                        var pct  = tgt > 0 ? (double)act / (double)tgt * 100 : 0;
+                        var cls  = pct >= 95 ? "actual-ok" : pct >= 80 ? "actual-warn" : "actual-bad";
+                        var disp = row == null ? "-" : "";
+                        <td class="td-val target">@(row == null ? "-" : tgt.ToString("0"))</td>
+                        <td class="td-val @cls" data-tgt="@tgt" data-act="@act">@(row == null ? "-" : act.ToString("0"))</td>
+                    }
+                </tr>
+            }
+            </tbody>
+
+            <!-- ── Cumulative Section ──────────────────── -->
+            <tbody class="cum-section">
+            <tr class="cum-header-row">
+                <th>CUMULATIVE</th>
+                @foreach (var col in cols)
+                {
+                    <th colspan="2">@col</th>
+                }
+            </tr>
+            @for (int h = 1; h <= 8; h++)
+            {
+                <tr class="cum-data-row" data-cum-hour="@h">
+                    <td class="cum-label-cell">
+                        H1-H@h
+                        <span class="cum-hour-lbl">@h hr cumulative</span>
+                    </td>
+                    @foreach (var col in cols)
+                    {
+                        var cumTgt = metrics.Where(m => m.HourSlot <= h).Sum(m => col switch {
+                            "FCT1" => m.FCT1_Target, "FCT2" => m.FCT2_Target, "FCT3" => m.FCT3_Target,
+                            "RF1"  => m.RF1_Target,  "RF2"  => m.RF2_Target,  "RTC1" => m.RTC1_Target,
+                            "VOL1" => m.VOL1_Target, _ => 0m });
+                        var cumAct = metrics.Where(m => m.HourSlot <= h).Sum(m => col switch {
+                            "FCT1" => m.FCT1_Actual, "FCT2" => m.FCT2_Actual, "FCT3" => m.FCT3_Actual,
+                            "RF1"  => m.RF1_Actual,  "RF2"  => m.RF2_Actual,  "RTC1" => m.RTC1_Actual,
+                            "VOL1" => m.VOL1_Actual, _ => 0m });
+                        var cumPct = cumTgt > 0 ? (double)cumAct / (double)cumTgt * 100 : 0;
+                        var cumCls = cumPct >= 95 ? "actual-ok" : cumPct >= 80 ? "actual-warn" : "actual-bad";
+                        <td class="td-cumval cum-target">@(metrics.Any(m => m.HourSlot <= h) ? cumTgt.ToString("0") : "-")</td>
+                        <td class="td-cumval @cumCls">@(metrics.Any(m => m.HourSlot <= h) ? cumAct.ToString("0") : "-")</td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+        </div>
+    </div>
+}
+</main>
+
+<!-- ══════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════ -->
+<footer class="app-footer">
+    <span>Production Dashboard v2.0 &nbsp;·&nbsp; .NET Core 8 &nbsp;·&nbsp; SQL Server</span>
+    <div style="display:flex; align-items:center; gap:0.8rem;">
+        <span>Next refresh in <span id="footerCount">60</span>s</span>
+        <div class="countdown-bar">
+            <div class="countdown-fill" id="countdownFill" style="width:100%"></div>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+<script>
+    /* ── Config ─────────────────────────────────────── */
+    const REFRESH_INTERVAL = 60;   // seconds
+    const COLS = ['FCT1','FCT2','FCT3','RF1','RF2','RTC1','VOL1'];
+    const SHIFTS = ['Night','Morning','Afternoon'];
+    let currentProduct = '@Model.SelectedProduct';
+    let countdown = REFRESH_INTERVAL;
+    let refreshTimer;
+
+    /* ── Clock ──────────────────────────────────────── */
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clock').textContent =
+            now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        document.getElementById('dateLabel').textContent =
+            now.toLocaleDateString('en-GB', {weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    /* ── Countdown ──────────────────────────────────── */
+    function startCountdown() {
+        clearInterval(refreshTimer);
+        countdown = REFRESH_INTERVAL;
+        refreshTimer = setInterval(() => {
+            countdown--;
+            const pct = (countdown / REFRESH_INTERVAL) * 100;
+            document.getElementById('footerCount').textContent = countdown;
+            document.getElementById('countdown-text').textContent = countdown + 's';
+            document.getElementById('countdownFill').style.width = pct + '%';
+            if (countdown <= 0) { autoRefresh(); }
+        }, 1000);
+    }
+
+    /* ── Refresh ─────────────────────────────────────── */
+    async function autoRefresh() {
+        await loadAllShifts(currentProduct);
+        startCountdown();
+    }
+
+    function manualRefresh() {
+        const btn = document.getElementById('refreshBtn');
+        btn.classList.add('spinning');
+        setTimeout(() => btn.classList.remove('spinning'), 800);
+        autoRefresh();
+    }
+
+    function changeProduct(val) {
+        currentProduct = val;
+        history.replaceState(null, '', '?product=' + encodeURIComponent(val));
+        autoRefresh();
+    }
+
+    /* ── Fetch + Render ─────────────────────────────── */
+    async function loadAllShifts(product) {
+        await Promise.all(SHIFTS.map(s => loadShift(product, s)));
+    }
+
+    async function loadShift(product, shift) {
+        try {
+            const res  = await fetch(`/api/metrics?product=${encodeURIComponent(product)}&shift=${encodeURIComponent(shift)}`);
+            const data = await res.json();
+            renderShift(shift, data);
+        } catch(e) {
+            console.warn('Fetch error for', shift, e);
+        }
+    }
+
+    function renderShift(shift, metrics) {
+        renderDataRows(shift, metrics);
+        renderCumRows(shift, metrics);
+        renderShiftStats(shift, metrics);
+    }
+
+    function renderDataRows(shift, metrics) {
+        const tbl  = document.getElementById('table-' + shift);
+        const rows = tbl.querySelectorAll('tbody:first-of-type .data-row');
+        rows.forEach(row => {
+            const h    = parseInt(row.dataset.hour);
+            const m    = metrics.find(x => x.hourSlot === h);
+            const cells = row.querySelectorAll('td.td-val');
+            let ci = 0;
+            COLS.forEach(col => {
+                const tgtCell = cells[ci++];
+                const actCell = cells[ci++];
+                if (!m) { tgtCell.textContent = '-'; actCell.textContent = '-'; return; }
+                const tgt = getVal(m, col, 'target');
+                const act = getVal(m, col, 'actual');
+                tgtCell.textContent = tgt.toFixed(0);
+                actCell.textContent = act.toFixed(0);
+                actCell.dataset.tgt = tgt;
+                actCell.dataset.act = act;
+                const pct = tgt > 0 ? act / tgt * 100 : 0;
+                actCell.className = 'td-val ' + (pct >= 95 ? 'actual-ok' : pct >= 80 ? 'actual-warn' : 'actual-bad');
+            });
+        });
+    }
+
+    function renderCumRows(shift, metrics) {
+        const tbl = document.getElementById('table-' + shift);
+        const cumRows = tbl.querySelectorAll('.cum-data-row');
+        cumRows.forEach(row => {
+            const h     = parseInt(row.dataset.cumHour);
+            const slice = metrics.filter(m => m.hourSlot <= h);
+            const cells = row.querySelectorAll('td.td-cumval');
+            let ci = 0;
+            COLS.forEach(col => {
+                const tgtCell = cells[ci++];
+                const actCell = cells[ci++];
+                if (!slice.length) {
+                    tgtCell.textContent = '-'; actCell.textContent = '-'; return;
+                }
+                const cumTgt = slice.reduce((s, m) => s + getVal(m, col, 'target'), 0);
+                const cumAct = slice.reduce((s, m) => s + getVal(m, col, 'actual'), 0);
+                const pct    = cumTgt > 0 ? cumAct / cumTgt * 100 : 0;
+
+                if (tgtCell.textContent !== cumTgt.toFixed(0)) {
+                    tgtCell.textContent = cumTgt.toFixed(0);
+                    tgtCell.classList.add('updated');
+                    setTimeout(() => tgtCell.classList.remove('updated'), 700);
+                }
+                if (actCell.textContent !== cumAct.toFixed(0)) {
+                    actCell.textContent = cumAct.toFixed(0);
+                    actCell.classList.add('updated');
+                    setTimeout(() => actCell.classList.remove('updated'), 700);
+                }
+                actCell.className = 'td-cumval ' + (pct >= 95 ? 'actual-ok' : pct >= 80 ? 'actual-warn' : 'actual-bad');
+            });
+        });
+    }
+
+    function renderShiftStats(shift, metrics) {
+        if (!metrics.length) return;
+        const statsEl = document.getElementById('stats-' + shift);
+        const totTgt  = metrics.reduce((s,m) => s + COLS.reduce((a,c) => a + getVal(m,c,'target'), 0), 0);
+        const totAct  = metrics.reduce((s,m) => s + COLS.reduce((a,c) => a + getVal(m,c,'actual'), 0), 0);
+        const pct     = totTgt > 0 ? Math.round(totAct / totTgt * 100) : 0;
+        const cls     = pct >= 95 ? 'ok' : pct >= 80 ? 'warn' : 'bad';
+        const clr     = pct >= 95 ? 'var(--accent-green)' : pct >= 80 ? 'var(--accent-amber)' : 'var(--accent-red)';
+        statsEl.innerHTML = `
+            <div class="stat-item ${cls}">
+                <span class="stat-val" style="color:${clr}">${pct}%</span>
+                <span class="stat-lbl">Overall</span>
+                <div class="mini-progress"><div class="mini-progress-fill" style="width:${Math.min(pct,100)}%"></div></div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-val">${metrics.length}/8</span>
+                <span class="stat-lbl">Hours</span>
+            </div>`;
+    }
+
+    /* ── Helper ─────────────────────────────────────── */
+    function getVal(m, col, type) {
+        const k = col.toLowerCase().replace(/(\d)/, '$1') + '_' + (type === 'target' ? 'target' : 'actual');
+        // C# properties are camelCase in JSON
+        const map = {
+            fct1_target:'fct1_Target', fct1_actual:'fct1_Actual',
+            fct2_target:'fct2_Target', fct2_actual:'fct2_Actual',
+            fct3_target:'fct3_Target', fct3_actual:'fct3_Actual',
+            rf1_target:'rf1_Target',   rf1_actual:'rf1_Actual',
+            rf2_target:'rf2_Target',   rf2_actual:'rf2_Actual',
+            rtc1_target:'rtC1_Target', rtc1_actual:'rtC1_Actual',
+            vol1_target:'voL1_Target', vol1_actual:'voL1_Actual',
+        };
+        // Try direct then mapped then manual
+        const keys = [
+            col + '_' + (type === 'target' ? 'Target' : 'Actual'),
+            col.toLowerCase() + '_' + type,
+        ];
+        for (const k2 of keys) {
+            if (m[k2] !== undefined) return parseFloat(m[k2]) || 0;
+        }
+        // Fallback: search case-insensitively
+        const needle = (col + (type === 'target' ? 'target' : 'actual')).toLowerCase().replace(/[_]/g,'');
+        for (const [key, val] of Object.entries(m)) {
+            if (key.toLowerCase().replace(/[_]/g,'') === needle) return parseFloat(val) || 0;
+        }
+        return 0;
+    }
+
+    /* ── Init ────────────────────────────────────────── */
+    startCountdown();
+    // Compute shift stats on first load from server-rendered data
+    SHIFTS.forEach(shift => {
+        fetch(`/api/metrics?product=${encodeURIComponent(currentProduct)}&shift=${encodeURIComponent(shift)}`)
+            .then(r => r.json())
+            .then(data => renderShiftStats(shift, data))
+            .catch(() => {});
+    });
+</script>
+</body>
+</html>
