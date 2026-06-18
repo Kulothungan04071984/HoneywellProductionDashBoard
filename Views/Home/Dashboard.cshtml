@@ -839,7 +839,7 @@
             <div class="table-wrap">
                 <table class="prod-table" id="table-@currentShift">
 
-                    @{
+                  @*   @{
                         var testerGroups = metrics
                         .Select(x => x.TesterGroup)
                         .Distinct()
@@ -860,8 +860,41 @@
                         })
                         .OrderBy(x => x.HourSlot)
                         .ToList();
-                    }
+                    } *@
+                    @{
+                        var testerOrder = new List<string>
+                                        {
+                                        "FCT1",
+                                        "RTC",
+                                        "LCD1",
+                                        "LCD2",
+                                        "RF1",
+                                        "FCT2",
+                                        "VOLT",
+                                        "RF2",
+                                        "FCT3"
+                                        };
 
+                        var testerGroups = metrics
+                        .Select(x => x.TesterGroup)
+                        .Distinct()
+                        .OrderBy(x =>
+                        {
+                            var index = testerOrder.IndexOf(x);
+                            return index == -1 ? 999 : index;
+                        })
+                        .ToList();
+
+                        var hourSlots = metrics
+                        .GroupBy(x => x.HourSlot)
+                        .Select(g => new
+                        {
+                            HourSlot = g.Key,
+                            HourRange = g.First().HourRange
+                        })
+                        .OrderBy(x => x.HourSlot)
+                        .ToList();
+                    }
                     <thead>
 
                         <tr>
@@ -912,8 +945,7 @@
                                 @foreach (var tg in testerGroups)
                                 {
                                     var row = metrics.FirstOrDefault(x =>
-                                    x.HourSlot == hour.HourSlot &&
-                                    x.TesterGroup == tg);
+                                    x.HourSlot == hour.HourSlot && x.TesterGroup == tg);
 
                                     decimal tgt = row?.Target ?? 0;
                                     decimal act = row?.Actual ?? 0;
@@ -955,8 +987,76 @@
                     </tbody>
 
                     <!-- CUMULATIVE -->
-
+                    @*  <span class="cum-hour-lbl">
+                                        @hour.HourRange hr cumulative
+                                    </span> *@
                     <tbody class="cum-section">
+
+                        <tr class="cum-header-row">
+
+                            <th>
+                                CUMULATIVE
+                            </th>
+
+                            @foreach (var tg in testerGroups)
+                            {
+                                <th colspan="2" style="text-align:left;">
+                                    @tg
+                                </th>
+                            }
+
+                        </tr>
+
+                        @{
+                            var shifts = metrics
+                            .Select(x => x.Shift)
+                            .Distinct()
+                            .OrderBy(x => x)
+                            .ToList();
+                        }
+
+                        @foreach (var shift in shifts)
+                        {
+                            <tr class="cum-data-row">
+
+                                <td class="cum-label-cell">
+                                    @shift
+                                </td>
+
+                                @foreach (var tg in testerGroups)
+                                {
+                                    var cumRows = metrics
+                                    .Where(x => x.Shift == shift
+                                    && x.TesterGroup == tg)
+                                    .ToList();
+
+                                    decimal cumTgt = cumRows.Sum(x => x.Target);
+                                    decimal cumAct = cumRows.Sum(x => x.Actual);
+
+                                    var cumPct = cumTgt > 0
+                                    ? (double)cumAct / (double)cumTgt * 100
+                                    : 0;
+
+                                    var cumCls = cumPct >= 95
+                                    ? "actual-ok"
+                                    : cumPct >= 80
+                                    ? "actual-warn"
+                                    : "actual-bad";
+
+                                    <td class="td-cumval cum-target">
+                                        @(cumRows.Any() ? cumTgt.ToString("0") : "-")
+                                    </td>
+
+                                    <td class="td-cumval @cumCls">
+                                        @(cumRows.Any() ? cumAct.ToString("0") : "-")
+                                    </td>
+                                }
+
+                            </tr>
+                        }
+
+                    </tbody>
+                   @*  <tbody class="cum-section">
 
                         <tr class="cum-header-row">
 
@@ -982,9 +1082,7 @@
 
                                     @hour.HourRange
 
-                                   @*  <span class="cum-hour-lbl">
-                                        @hour.HourRange hr cumulative
-                                    </span> *@
+                                
 
                                 </td>
 
@@ -1022,7 +1120,7 @@
                             </tr>
                         }
 
-                    </tbody>
+                    </tbody> *@
 
                 </table>
             </div>
@@ -1312,75 +1410,140 @@
                                                              Cumulative up to ${hourRange}
                                        </span>*/
 
-                   html += `
-                       <tbody class="cum-section">
+                   // html += `
+                   //     <tbody class="cum-section">
 
-                           <tr class="cum-header-row">
+                   //         <tr class="cum-header-row">
 
-                               <th>CUMULATIVE</th>
+                   //             <th>CUMULATIVE</th>
 
-                               ${testerGroups.map(tg =>
-                                   `<th colspan="2">${tg}</th>`
-                               ).join('')}
+                   //             ${testerGroups.map(tg =>
+                   //                 `<th colspan="2">${tg}</th>`
+                   //             ).join('')}
 
-                           </tr>
-                   `;
+                   //         </tr>
+                   // `;
 
-                       hourSlots.forEach(([hourSlot, hourRange]) => {
+                   //     hourSlots.forEach(([hourSlot, hourRange]) => {
 
-                       html += `
-                           <tr class="cum-data-row">
+                   //     html += `
+                   //         <tr class="cum-data-row">
 
-                               <td class="cum-label-cell">
+                   //             <td class="cum-label-cell">
 
-                                                     ${hourRange}
+                   //                                   ${hourRange}
 
                                   
 
-                               </td>
-                       `;
+                   //             </td>
+                   //     `;
 
-                       testerGroups.forEach(tg => {
+                   //     testerGroups.forEach(tg => {
 
-                           const rows = metrics.filter(x =>
-                                   x.hourSlot <= hourSlot &&
-                               x.testerGroup === tg);
+                   //         const rows = metrics.filter(x =>
+                   //                 x.hourSlot <= hourSlot &&
+                   //             x.testerGroup === tg);
 
-                           const cumTgt =
-                               rows.reduce((s,x) => s + x.target, 0);
+                   //         const cumTgt =
+                   //             rows.reduce((s,x) => s + x.target, 0);
 
-                           const cumAct =
-                               rows.reduce((s,x) => s + x.actual, 0);
+                   //         const cumAct =
+                   //             rows.reduce((s,x) => s + x.actual, 0);
 
-                           const pct =
-                               cumTgt > 0
-                               ? (cumAct / cumTgt) * 100
-                               : 0;
+                   //         const pct =
+                   //             cumTgt > 0
+                   //             ? (cumAct / cumTgt) * 100
+                   //             : 0;
 
-                           const cls =
-                               pct >= 95
-                               ? 'actual-ok'
-                               : pct >= 80
-                               ? 'actual-warn'
-                               : 'actual-bad';
+                   //         const cls =
+                   //             pct >= 95
+                   //             ? 'actual-ok'
+                   //             : pct >= 80
+                   //             ? 'actual-warn'
+                   //             : 'actual-bad';
 
-                           html += `
-                               <td class="td-cumval cum-target">
-                                   ${cumTgt.toFixed(0)}
-                               </td>
+                   //         html += `
+                   //             <td class="td-cumval cum-target">
+                   //                 ${cumTgt.toFixed(0)}
+                   //             </td>
 
-                               <td class="td-cumval ${cls}">
-                                   ${cumAct.toFixed(0)}
-                               </td>
+                   //             <td class="td-cumval ${cls}">
+                   //                 ${cumAct.toFixed(0)}
+                   //             </td>
                               
-                           `;
-                       });
+                   //         `;
+                   //     });
 
-                       html += `</tr>`;
-                   });
+                   //     html += `</tr>`;
+                   // });
 
-                   html += `</tbody>`;
+                   // html += `</tbody>`;
+                           html += `
+            <tbody class="cum-section">
 
+                <tr class="cum-header-row">
+
+                    <th>CUMULATIVE</th>
+
+                    ${testerGroups.map(tg =>
+                        `<th colspan="2">${tg}</th>`
+                    ).join('')}
+
+                </tr>
+        `;
+
+        const shifts = [...new Set(metrics.map(x => x.shift))]
+            .sort();
+
+        shifts.forEach(shift => {
+
+            html += `
+                <tr class="cum-data-row">
+
+                    <td class="cum-label-cell">
+                        ${shift}
+                    </td>
+            `;
+
+            testerGroups.forEach(tg => {
+
+                const rows = metrics.filter(x =>
+                    x.shift === shift &&
+                    x.testerGroup === tg);
+
+                const cumTgt =
+                    rows.reduce((s, x) => s + x.target, 0);
+
+                const cumAct =
+                    rows.reduce((s, x) => s + x.actual, 0);
+
+                const pct =
+                    cumTgt > 0
+                        ? (cumAct / cumTgt) * 100
+                        : 0;
+
+                const cls =
+                    pct >= 95
+                        ? 'actual-ok'
+                        : pct >= 80
+                            ? 'actual-warn'
+                            : 'actual-bad';
+
+                html += `
+                    <td class="td-cumval cum-target">
+                        ${cumTgt.toFixed(0)}
+                    </td>
+
+                    <td class="td-cumval ${cls}">
+                        ${cumAct.toFixed(0)}
+                    </td>
+                `;
+            });
+
+            html += `</tr>`;
+        });
+
+        html += `</tbody>`;
                    table.innerHTML = html;
 
                    renderShiftStats(shift, metrics);

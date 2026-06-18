@@ -80,7 +80,7 @@ namespace ProductionDashboard.Controllers
                 return RedirectToAction("Index");
             }
 
-            // Call the SP with the raw date strings (SP handles conversion internally)
+          
             var allData = await _svc.GetHistoryAsync(fromdate, todate);
 
             System.Diagnostics.Debug.WriteLine($"fromdate='{fromdate}', todate='{todate}', count={allData.Count}");

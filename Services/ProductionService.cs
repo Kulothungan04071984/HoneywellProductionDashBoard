@@ -173,7 +173,7 @@ namespace ProductionDashboard.Services
                 using var conn = new SqlConnection(_connectionString);
 
                 var result = await conn.QueryAsync<dynamic>(
-     "PRO_GETHONEYWELLV200DETAILS_Test",
+     "PRO_GETHONEYWELLV200DETAILS_old",
      new
      {
          datevalue = DateTime.Now.ToString("dd-MM-yyyy")
