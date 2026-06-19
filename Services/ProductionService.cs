@@ -56,7 +56,7 @@ namespace ProductionDashboard.Services
                 throw new Exception($"Invalid todate: '{todate}'");
 
             using var conn = new SqlConnection(_connectionString);
-            using var cmd = new SqlCommand("PRO_GETHONEYWELLV200DETAILS_History", conn);
+            using var cmd = new SqlCommand("[PRO_GETHONEYWELLV200DETAILS_History_old]", conn);
             cmd.CommandType = CommandType.StoredProcedure;
             cmd.Parameters.Add("@fromdate", SqlDbType.Date).Value = fromDt;
             cmd.Parameters.Add("@todate", SqlDbType.Date).Value = toDt;
