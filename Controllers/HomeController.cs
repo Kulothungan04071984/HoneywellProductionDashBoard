@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ProductionDashboard.Models;
 using ProductionDashboard.Services;
+using System.Reflection;
 
 namespace ProductionDashboard.Controllers
 {
@@ -87,7 +88,7 @@ namespace ProductionDashboard.Controllers
 
             if (!allData.Any())
                 throw new Exception($"No data returned. fromdate='{fromdate}' todate='{todate}'");
-
+        
             var vm = new DashboardHistoryViewModel
             {
                 Product = product,
@@ -96,7 +97,17 @@ namespace ProductionDashboard.Controllers
                 Products = products.ToList(),
                 NightShift = allData.Where(m => m.Shift == "SHIFT-C").ToList(),
                 MorningShift = allData.Where(m => m.Shift == "SHIFT-A").ToList(),
-                AfternoonShift = allData.Where(m => m.Shift == "SHIFT-B").ToList()
+                AfternoonShift = allData.Where(m => m.Shift == "SHIFT-B").ToList(),
+                DayWiseCumulative = allData.Where(m => m.TesterGroup == "TOTAL")
+                                           .GroupBy(m => m.DateValue)
+                                           .Select(g => new ShiftMetric
+                                           {
+                                               DateValue = g.Key,
+                                               Target = g.Sum(x => x.Target),
+                                               Actual = g.Sum(x => x.Actual)
+                                           })
+                                           .OrderBy(x => x.DateValue)
+                                           .ToList()
             };
 
             return View("DashBoardHistory", vm);

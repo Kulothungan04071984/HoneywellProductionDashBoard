@@ -699,6 +699,14 @@
 
         <div class="tab-divider"></div>
 
+        <button class="shift-tab"
+                data-panel="panel-daywise"
+                data-color="daywise"
+                onclick="switchTab(this,'daywise')">
+            <i class="fas fa-calendar-alt"></i>
+            Day Wise Cumulative
+        </button>
+
         @* ── Cumulative tabs ── *@
         @foreach (var shift in allShifts)
         {
@@ -923,9 +931,49 @@
                         </table>
                     }
                 </div>
+
+               
             </div>
         }
 
+
+       
+
+        @* ════════════════════════════════════════════════════════
+           SECTION C — Day Wise Cumulative (single panel, once)
+           ════════════════════════════════════════════════════════ *@
+        <div class="shift-panel" id="panel-daywise">
+            <div class="shift-header">
+                <div class="shift-title-group">
+                    <i class="fas fa-calendar-alt shift-icon"></i>
+                    <div>
+                        <div class="shift-name">DAY WISE CUMULATIVE</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table class="prod-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Target</th>
+                            <th>Actual</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.DayWiseCumulative)
+                        {
+                            <tr>
+                                <td>@row.DateValue</td>
+                                <td>@row.Target</td>
+                                <td>@row.Actual</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </main>
 
     <!-- ── Footer ───────────────────────────────────────────── -->
@@ -939,7 +987,7 @@
         // All 6 panel IDs
         const ALL_PANELS = [
             'panel-Morning', 'panel-Afternoon', 'panel-Night',
-            'panel-cumul-Morning', 'panel-cumul-Afternoon', 'panel-cumul-Night'
+            'panel-cumul-Morning', 'panel-cumul-Afternoon', 'panel-cumul-Night','panel-daywise'
         ];
 
         function switchTab(btn, colorKey) {

@@ -42,21 +42,21 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <style>
         :root {
-            --bg-base: #0d1b2a;
-            --bg-panel: #112233;
-            --bg-card: #162840;
-            --bg-header: #0a1520;
-            --accent-blue: #29d4ff;
-            --accent-green: #00ffb0;
-            --accent-amber: #ffc53d;
-            --accent-red: #ff4f7b;
-            --accent-purple: #c47aff;
-            --text-primary: #eef4ff;
-            --text-muted: #7e9bbf;
-            --border-glow: rgba(41,212,255,0.22);
-            --shift-night: #c47aff;
-            --shift-morning: #29d4ff;
-            --shift-afternoon: #00ffb0;
+            --bg-base: #f1f5f9;
+            --bg-panel: #ffffff;
+            --bg-card: #f8fafc;
+            --bg-header: #e8eef5;
+            --accent-blue: #0369a1;
+            --accent-green: #15803d;
+            --accent-amber: #b45309;
+            --accent-red: #dc2626;
+            --accent-purple: #7c3aed;
+            --text-primary: #0f172a;
+            --text-muted: #475569;
+            --border-glow: rgba(3,105,161,0.25);
+            --shift-night: #7c3aed;
+            --shift-morning: #0369a1;
+            --shift-afternoon: #15803d;
         }
 
         *, *::before, *::after {
@@ -69,12 +69,12 @@
             color: var(--text-primary);
             font-family: 'Exo 2', sans-serif;
             min-height: 100vh;
-            background-image: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0,200,255,0.06) 0%, transparent 70%), repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,200,255,0.03) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,200,255,0.03) 40px);
+            background-image: none;
         }
 
         /* ── Header ─────────────────────────────────────── */
         .app-header {
-            background: linear-gradient(135deg, #060b18 0%, #0d1830 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #eaf2fb 100%);
             border-bottom: 1px solid var(--border-glow);
             padding: 1rem 2rem;
             display: flex;
@@ -83,7 +83,7 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 4px 30px rgba(0,200,255,0.08);
+            box-shadow: 0 2px 12px rgba(15,23,42,0.08);
         }
 
         .brand {
@@ -101,17 +101,17 @@
             align-items: center;
             justify-content: center;
             font-size: 1.2rem;
-            box-shadow: 0 0 20px rgba(0,200,255,0.4);
+            box-shadow: 0 2px 10px rgba(3,105,161,0.35);
             animation: pulse-glow 3s ease-in-out infinite;
         }
 
         @@keyframes pulse-glow {
             0%, 100% {
-                box-shadow: 0 0 20px rgba(0,200,255,0.4);
+                box-shadow: 0 2px 10px rgba(3,105,161,0.3);
             }
 
             50% {
-                box-shadow: 0 0 35px rgba(0,200,255,0.7);
+                box-shadow: 0 2px 18px rgba(3,105,161,0.55);
             }
         }
 
@@ -142,8 +142,8 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            background: rgba(0,255,157,0.1);
-            border: 1px solid rgba(0,255,157,0.3);
+            background: rgba(21,128,61,0.1);
+            border: 1px solid rgba(21,128,61,0.35);
             border-radius: 20px;
             padding: 0.3rem 0.8rem;
             font-size: 0.75rem;
@@ -227,7 +227,7 @@
 
             .product-select:hover, .product-select:focus {
                 border-color: var(--accent-blue);
-                box-shadow: 0 0 15px rgba(0,200,255,0.2);
+                box-shadow: 0 0 0 3px rgba(3,105,161,0.15);
             }
 
         .product-select-icon {
@@ -259,7 +259,7 @@
 
             .refresh-btn:hover {
                 background: linear-gradient(135deg, rgba(0,200,255,0.2), rgba(168,85,247,0.2));
-                box-shadow: 0 0 20px rgba(0,200,255,0.3);
+                box-shadow: 0 2px 10px rgba(3,105,161,0.25);
                 transform: translateY(-1px);
             }
 
@@ -283,8 +283,8 @@
             margin-bottom: 2rem;
             border-radius: 14px;
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.07);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            border: 1px solid rgba(15,23,42,0.12);
+            box-shadow: 0 4px 18px rgba(15,23,42,0.10);
             animation: slideUp 0.5s ease both;
         }
 
@@ -425,7 +425,7 @@
         }
 
         .prod-table th, .prod-table td {
-            border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid rgba(15,23,42,0.10);
             text-align: center;
             padding: 0;
         }
@@ -456,12 +456,12 @@
         }
 
             .th-sub.sub-target {
-                background: rgba(0,200,255,0.06);
+                background: rgba(3,105,161,0.08);
                 color: var(--accent-blue);
             }
 
             .th-sub.sub-actual {
-                background: rgba(0,255,157,0.06);
+                background: rgba(21,128,61,0.08);
                 color: var(--accent-green);
             }
 
@@ -485,7 +485,7 @@
             position: sticky;
             left: 0;
             z-index: 1;
-            border-right: 1px solid rgba(255,255,255,0.1) !important;
+            border-right: 1px solid rgba(15,23,42,0.15) !important;
         }
 
         .td-val {
@@ -496,23 +496,23 @@
         }
 
             .td-val.target {
-                color: rgba(0,200,255,0.7);
-                background: rgba(0,200,255,0.03);
+                color: #0369a1;
+                background: rgba(3,105,161,0.05);
             }
 
             .td-val.actual-ok {
                 color: var(--accent-green);
-                background: rgba(0,255,157,0.05);
+                background: rgba(21,128,61,0.10);
             }
 
             .td-val.actual-warn {
                 color: var(--accent-amber);
-                background: rgba(255,179,0,0.05);
+                background: rgba(245,158,11,0.18);
             }
 
             .td-val.actual-bad {
                 color: var(--accent-red);
-                background: rgba(255,61,107,0.05);
+                background: rgba(220,38,38,0.08);
             }
 
         /* Cumulative row */
@@ -555,8 +555,8 @@
         }
 
             .td-cumval.cum-target {
-                color: rgba(0,200,255,0.6);
-                background: rgba(0,200,255,0.04);
+                color: #0369a1;
+                background: rgba(3,105,161,0.06);
             }
 
             .td-cumval.updated {
@@ -605,7 +605,7 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(0,200,255,0.3);
+            background: rgba(3,105,161,0.35);
             border-radius: 3px;
         }
 
@@ -613,7 +613,7 @@
         .mini-progress {
             width: 80px;
             height: 4px;
-            background: rgba(255,255,255,0.1);
+            background: rgba(15,23,42,0.12);
             border-radius: 2px;
             overflow: hidden;
             margin-top: 3px;
@@ -653,7 +653,7 @@
         .countdown-bar {
             width: 120px;
             height: 3px;
-            background: rgba(255,255,255,0.1);
+            background: rgba(15,23,42,0.12);
             border-radius: 2px;
             overflow: hidden;
         }
@@ -669,8 +669,8 @@
         .prod-table {
             width: 100%;
             border-collapse: collapse;
-            background: #071426;
-            color: #00e5ff;
+            background: #ffffff;
+            color: #0369a1;
             font-family: 'Segoe UI';
             text-align: center;
             overflow: hidden;
@@ -679,13 +679,13 @@
 
             .prod-table th,
             .prod-table td {
-                border: 1px solid rgba(0,255,255,0.08);
+                border: 1px solid rgba(15,23,42,0.10);
                 padding: 10px;
             }
 
         .group-head {
-            background: #081b33;
-            color: #00e5ff;
+            background: #dbe7f3;
+            color: #0c4a6e;
             font-size: 22px;
             font-weight: 700;
             text-transform: uppercase;
@@ -693,54 +693,54 @@
         }
 
         .sub-head {
-            background: #0c2947;
-            color: #00ffc8;
+            background: #e8f0f8;
+            color: #0f766e;
             font-size: 16px;
         }
 
         .hour-col {
-            background: #14243b;
-            color: #8fb7ff;
+            background: #e8eef5;
+            color: #1e3a5f;
             width: 120px;
             font-size: 18px;
         }
 
         .hour-cell {
-            background: #182b47;
-            color: #9cc7ff;
+            background: #f1f5f9;
+            color: #1e3a5f;
             font-weight: bold;
             font-size: 16px;
         }
 
         .target-cell {
-            background: rgba(0,180,255,0.08);
-            color: #00cfff;
+            background: rgba(3,105,161,0.07);
+            color: #0369a1;
             font-weight: 600;
         }
 
         .actual-ok {
-            background: rgba(0,255,170,0.08);
-            color: #00ffbf;
+            background: rgba(21,128,61,0.12);
+            color: #15803d;
             font-weight: bold;
             font-size: 18px;
         }
 
         .actual-warn {
-            background: rgba(255,193,7,0.08);
-            color: #ffd54f;
+            background: rgba(245,158,11,0.22);
+            color: #92400e;
             font-weight: bold;
             font-size: 18px;
         }
 
         .actual-bad {
-            background: rgba(255,0,85,0.08);
-            color: #ff4f7b;
+            background: rgba(220,38,38,0.09);
+            color: #dc2626;
             font-weight: bold;
             font-size: 18px;
         }
 
         .prod-table tbody tr:hover {
-            background: rgba(0,255,255,0.03);
+            background: rgba(3,105,161,0.06);
             transition: 0.3s;
         }
 
@@ -748,8 +748,7 @@
             height: 50px; /* fixed height, fits the header bar */
             width: auto; /* preserves aspect ratio */
             object-fit: contain;
-            opacity: 0.92;
-            filter: brightness(1.1); /* slight boost on dark background */
+            opacity: 1;
         }
     </style>
 </head>
@@ -944,6 +943,8 @@
 
                                 @foreach (var tg in testerGroups)
                                 {
+
+                                  
                                     var row = metrics.FirstOrDefault(x =>
                                     x.HourSlot == hour.HourSlot && x.TesterGroup == tg);
 
@@ -956,12 +957,8 @@
                                     ? (double)act / (double)tgt * 100
                                     : 0;
 
-                                    var cls = pct >= 95
-                                    ? "actual-ok"
-                                    : pct >= 80
-                                    ? "actual-warn"
-                                    : "actual-bad";
-
+                                    var cls = pct >= 95  ? "actual-ok" : pct >= 80 ? "actual-warn"  : "actual-bad";
+                                    if (act >= 46) { cls = "actual-ok"; }
                                     <td class="target-cell">
                                         @(row == null ? "-" : tgt.ToString("0"))
                                     </td>
@@ -1150,7 +1147,7 @@
 
                /* ── Show Button: Validate + Fetch History ─────────────────────────── */
         $('#btnShow').on('click', function () {
-            debugger;
+           // debugger;
             // 1. Clear previous errors
             $('#fromDate, #toDate').css('border-color', '');
             $('#fromDateError, #toDateError').text('');
@@ -1353,7 +1350,7 @@
                    `;
 
                        hourSlots.forEach(([hourSlot, hourRange]) => {
-                     debugger;
+                    // debugger;
                        html += `<tr class="data-row">`;
 
                        html += `

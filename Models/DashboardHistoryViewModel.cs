@@ -10,5 +10,7 @@
         public List<ShiftMetric> NightShift { get; set; }
         public List<ShiftMetric> MorningShift { get; set; }
         public List<ShiftMetric> AfternoonShift { get; set; }
+
+        public List<ShiftMetric> DayWiseCumulative { get; set; } = new();
     }
 }

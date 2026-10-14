@@ -10,6 +10,7 @@
     <Compile Remove="Services\ProductionServiceold.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Remove="Views\Home\Dashboard_1.cshtml" />
     <Content Remove="Views\Home\Indexold.cshtml" />
   </ItemGroup>
   <ItemGroup>
