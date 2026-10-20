@@ -1,4 +1,5 @@
-﻿@using ProductionDashboard.Models
+@using ProductionDashboard.Models
+@using System.Globalization
 @model ProductionDashboard.Models.DashboardHistoryViewModel
 
 @{
@@ -11,54 +12,46 @@
         ["Afternoon"] = Model.AfternoonShift,
         ["Night"] = Model.NightShift
     };
+    var shiftIcons = new Dictionary<string, string> { ["Morning"] = "fa-sun", ["Afternoon"] = "fa-cloud-sun", ["Night"] = "fa-moon" };
+    var shiftLabels = new Dictionary<string, string> { ["Morning"] = "Morning shift", ["Afternoon"] = "Afternoon shift", ["Night"] = "Night shift" };
+    var shiftTimes = new Dictionary<string, string> { ["Morning"] = "8:00 AM – 4:00 PM", ["Afternoon"] = "4:00 PM – 12:00 AM", ["Night"] = "12:00 AM – 8:00 AM" };
 
-    var shiftIcons = new Dictionary<string, string>
-    {
-        ["Night"] = "fa-moon",
-        ["Morning"] = "fa-sun",
-        ["Afternoon"] = "fa-cloud-sun"
-    };
-
-    var shiftLabels = new Dictionary<string, string>
-    {
-        ["Night"] = "Night Shift",
-        ["Morning"] = "Morning Shift",
-        ["Afternoon"] = "Afternoon Shift"
-    };
-
-    var shiftTimes = new Dictionary<string, string>
-    {
-        ["Night"] = "12:00 AM – 8:00 AM",
-        ["Morning"] = "8:00 AM – 4:00 PM",
-        ["Afternoon"] = "4:00 PM – 12:00 AM"
-    };
-
-    var shiftClasses = new Dictionary<string, string>
-    {
-        ["Night"] = "shift-night",
-        ["Morning"] = "shift-morning",
-        ["Afternoon"] = "shift-afternoon"
-    };
-
-    // Keys must exactly match what SQL returns after stripping "V200" prefix.
-    // Dual entries handle naming variants (e.g. V200RTC → RTC, V200RTC1 → RTC1)
     var testerSortOrder = new Dictionary<string, int>
     {
-        ["FCT1"] = 1,
-        ["RTC"] = 2,
-        ["RTC1"] = 2,
-        ["LCD1"] = 3,
-        ["LCD2"] = 4,
-        ["RF1"] = 5,
-        ["FCT2"] = 6,
-        ["VOLT"] = 7,
-        ["VOL1"] = 7,
-        ["RF2"] = 8,
-        ["FCT3"] = 9
+        ["FCT1"] = 1, ["RTC"] = 2, ["RTC1"] = 2, ["LCD1"] = 3, ["LCD2"] = 4, ["RF1"] = 5,
+        ["FCT2"] = 6, ["VOLT"] = 7, ["VOL1"] = 7, ["RF2"] = 8, ["FCT3"] = 9
+    };
+    int GetTesterOrder(string tg) => testerSortOrder.TryGetValue(tg, out var o) ? o : 99;
+
+    // The two testers shown in every cumulative view
+    var cumulGroups = new[]
+    {
+        (Label: "Before potting", Name: "VOL1", Css: "g-vol", Pick: (Func<string, bool>)(tg => tg.StartsWith("VOL"))),
+        (Label: "After potting",  Name: "FCT3", Css: "g-fct", Pick: (Func<string, bool>)(tg => tg == "FCT3"))
     };
 
-    int GetTesterOrder(string tg) =>
-        testerSortOrder.TryGetValue(tg, out var o) ? o : 99;
+    DateTime DateKey(string s) =>
+        DateTime.TryParseExact(s, "dd-MM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : DateTime.MinValue;
+
+    (decimal T, decimal A, int N) SumOf(IEnumerable<ShiftMetric> rows, Func<string, bool> pick)
+    {
+        var r = rows.Where(m => m.TesterGroup != "TOTAL" && pick(m.TesterGroup)).ToList();
+        return (r.Sum(x => x.Target), r.Sum(x => x.Actual), r.Count);
+    }
+    double Pct(decimal t, decimal a) => t > 0 ? Math.Round((double)a / (double)t * 100, 0) : 0;
+    string Cls(decimal t, decimal a) { var p = t > 0 ? (double)a / (double)t * 100 : 0; return p >= 95 ? "ok" : p >= 80 ? "warn" : "bad"; }
+    string PctColor(double p) => p >= 95 ? "var(--ok)" : p >= 80 ? "var(--warn)" : "var(--bad)";
+
+    // Cumulative panels: id, title, subtitle, accent class, rows
+    var allRows = allShifts.SelectMany(s => shiftData[s]).ToList();
+    var cumulPanels = new List<(string Id, string Title, string Sub, string Css, List<ShiftMetric> Rows)>
+    {
+        ("panel-day", "Day-wise cumulative", "All three shifts added together", "s-day", allRows)
+    };
+    foreach (var s in allShifts)
+    {
+        cumulPanels.Add(("panel-cumul-" + s, shiftLabels[s] + " cumulative", shiftTimes[s], "s-" + s.ToLower(), shiftData[s]));
+    }
 }
 
 <!DOCTYPE html>
@@ -69,758 +62,203 @@
     <title>Dashboard History</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
     <style>
         :root {
-            --bg-base: #0d1b2a;
-            --bg-panel: #112233;
-            --bg-header: #0a1520;
-            --accent-blue: #29d4ff;
-            --accent-green: #00ffb0;
-            --accent-purple: #c47aff;
-            --text-primary: #eef4ff;
-            --text-muted: #7e9bbf;
-            --border-glow: rgba(41,212,255,0.22);
-            --shift-night: #c47aff;
-            --shift-morning: #29d4ff;
-            --shift-afternoon: #00ffb0;
-        }
-
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-        }
-
-        body {
-            background: var(--bg-base);
-            color: var(--text-primary);
-            font-family: 'Exo 2', sans-serif;
-            min-height: 100vh;
-            background-image: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0,200,255,0.06) 0%, transparent 70%), repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,200,255,0.03) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,200,255,0.03) 40px);
-        }
-
-        /* ── Header ─────────────────────────────── */
-        .app-header {
-            background: linear-gradient(135deg, #060b18 0%, #0d1830 100%);
-            border-bottom: 1px solid var(--border-glow);
-            padding: 1rem 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 4px 30px rgba(0,200,255,0.08);
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .brand-icon {
-            width: 42px;
-            height: 42px;
-            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            box-shadow: 0 0 20px rgba(0,200,255,0.4);
-        }
-
-        .brand-title {
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 1.8rem;
-            font-weight: 700;
-            letter-spacing: 2px;
-            background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .brand-sub {
-            font-size: .85rem;
-            color: var(--text-muted);
-            letter-spacing: 3px;
-            text-transform: uppercase;
-        }
-
-        .back-btn {
-            background: linear-gradient(135deg, rgba(0,200,255,.1), rgba(168,85,247,.1));
-            border: 1px solid var(--border-glow);
-            color: var(--accent-blue);
-            border-radius: 8px;
-            padding: .5rem 1.2rem;
-            font-family: 'Exo 2', sans-serif;
-            font-size: .85rem;
-            font-weight: 600;
-            letter-spacing: 1px;
-            cursor: pointer;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: .5rem;
-            transition: all .3s;
-        }
-
-            .back-btn:hover {
-                background: rgba(0,200,255,.2);
-                box-shadow: 0 0 18px rgba(0,200,255,.3);
-                color: var(--accent-blue);
-            }
-
-        /* ── Info Bar ───────────────────────────── */
-        .info-bar {
-            padding: .85rem 2rem;
-            background: var(--bg-panel);
-            border-bottom: 1px solid var(--border-glow);
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .info-chip {
-            display: flex;
-            align-items: center;
-            gap: .5rem;
-            font-size: .8rem;
-            color: var(--text-muted);
-            font-family: 'Share Tech Mono', monospace;
-            letter-spacing: 1px;
-        }
-
-            .info-chip span {
-                color: var(--accent-blue);
-                font-weight: 600;
-            }
-
-        /* ── Tab Bar ────────────────────────────── */
-        .shift-tabs {
-            display: flex;
-            background: var(--bg-header);
-            border-bottom: 1px solid var(--border-glow);
-            padding: 0 2rem;
-            flex-wrap: wrap;
-            gap: 0;
-        }
-
-        /* divider between hourly and cumulative groups */
-        .tab-divider {
-            width: 1px;
-            background: rgba(255,255,255,.12);
-            margin: .4rem .6rem;
-            align-self: stretch;
-        }
-
-        .shift-tab {
-            display: flex;
-            align-items: center;
-            gap: .5rem;
-            padding: .85rem 1.4rem;
-            font-family: 'Rajdhani', sans-serif;
-            font-size: .95rem;
-            font-weight: 700;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            cursor: pointer;
-            border: none;
-            background: transparent;
-            border-bottom: 3px solid transparent;
-            transition: all .25s;
-            position: relative;
-            top: 1px;
-            white-space: nowrap;
-        }
-
-            .shift-tab:hover {
-                color: var(--text-primary);
-            }
-
-            /* hourly tab active colours */
-            .shift-tab.active-morning {
-                color: var(--shift-morning);
-                border-bottom-color: var(--shift-morning);
-            }
-
-            .shift-tab.active-afternoon {
-                color: var(--shift-afternoon);
-                border-bottom-color: var(--shift-afternoon);
-            }
-
-            .shift-tab.active-night {
-                color: var(--shift-night);
-                border-bottom-color: var(--shift-night);
-            }
-
-            /* cumulative tab active colours — slightly brighter / solid border */
-            .shift-tab.active-cumul-morning {
-                color: var(--shift-morning);
-                border-bottom: 3px solid var(--shift-morning);
-                background: rgba(41,212,255,.06);
-            }
-
-            .shift-tab.active-cumul-afternoon {
-                color: var(--shift-afternoon);
-                border-bottom: 3px solid var(--shift-afternoon);
-                background: rgba(0,255,176,.06);
-            }
-
-            .shift-tab.active-cumul-night {
-                color: var(--shift-night);
-                border-bottom: 3px solid var(--shift-night);
-                background: rgba(196,122,255,.06);
-            }
-
-        .tab-badge {
-            font-size: .62rem;
-            padding: .12rem .4rem;
-            border-radius: 4px;
-            font-family: 'Share Tech Mono', monospace;
-        }
-
-        .badge-morning {
-            background: rgba(41,212,255,.15);
-            color: var(--shift-morning);
-        }
-
-        .badge-afternoon {
-            background: rgba(0,255,176,.15);
-            color: var(--shift-afternoon);
-        }
-
-        .badge-night {
-            background: rgba(196,122,255,.15);
-            color: var(--shift-night);
-        }
-
-        /* small "CUMUL" label inside badge */
-        .cumul-badge {
-            font-size: .55rem;
-            padding: .1rem .38rem;
-            border-radius: 4px;
-            font-family: 'Share Tech Mono', monospace;
-            letter-spacing: 1px;
-            border: 1px dashed currentColor;
-            opacity: .8;
-        }
-
-        /* ── Main ───────────────────────────────── */
-        .main-content {
-            padding: 1.5rem 2rem;
-        }
-
-        /* ── Shift Panel ────────────────────────── */
-        .shift-panel {
-            display: none;
-            border-radius: 14px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,.07);
-            box-shadow: 0 8px 32px rgba(0,0,0,.4);
-            animation: slideUp .35s ease both;
-        }
-
-            .shift-panel.visible {
-                display: block;
-            }
-
-        @@keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(14px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .shift-header {
-            padding: .9rem 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .shift-night > .shift-header {
-            background: linear-gradient(135deg,rgba(168,85,247,.2),rgba(168,85,247,.05));
-            border-bottom: 2px solid rgba(168,85,247,.4);
-        }
-
-        .shift-morning > .shift-header {
-            background: linear-gradient(135deg,rgba(0,200,255,.2),rgba(0,200,255,.05));
-            border-bottom: 2px solid rgba(0,200,255,.4);
-        }
-
-        .shift-afternoon > .shift-header {
-            background: linear-gradient(135deg,rgba(0,255,157,.15),rgba(0,255,157,.04));
-            border-bottom: 2px solid rgba(0,255,157,.4);
-        }
-
-        /* cumulative panel headers — dashed bottom border to distinguish */
-        .cumul-night > .shift-header {
-            background: linear-gradient(135deg,rgba(168,85,247,.15),rgba(168,85,247,.04));
-            border-bottom: 2px dashed rgba(168,85,247,.5);
-        }
-
-        .cumul-morning > .shift-header {
-            background: linear-gradient(135deg,rgba(0,200,255,.15),rgba(0,200,255,.04));
-            border-bottom: 2px dashed rgba(0,200,255,.5);
-        }
-
-        .cumul-afternoon > .shift-header {
-            background: linear-gradient(135deg,rgba(0,255,157,.12),rgba(0,255,157,.03));
-            border-bottom: 2px dashed rgba(0,255,157,.5);
-        }
-
-        .shift-title-group {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .shift-icon {
-            font-size: 1.3rem;
-        }
-
-        .shift-night .shift-icon, .cumul-night .shift-icon {
-            color: var(--shift-night);
-        }
-
-        .shift-morning .shift-icon, .cumul-morning .shift-icon {
-            color: var(--shift-morning);
-        }
-
-        .shift-afternoon .shift-icon, .cumul-afternoon .shift-icon {
-            color: var(--shift-afternoon);
-        }
-
-        .shift-name {
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 1.3rem;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        .shift-night .shift-name, .cumul-night .shift-name {
-            color: var(--shift-night);
-        }
-
-        .shift-morning .shift-name, .cumul-morning .shift-name {
-            color: var(--shift-morning);
-        }
-
-        .shift-afternoon .shift-name, .cumul-afternoon .shift-name {
-            color: var(--shift-afternoon);
-        }
-
-        .shift-time {
-            font-family: 'Share Tech Mono', monospace;
-            font-size: .9rem;
-            color: var(--text-muted);
-        }
-
-        /* "DAILY CUMULATIVE" sub-label */
-        .cumul-sub-label {
-            font-family: 'Share Tech Mono', monospace;
-            font-size: .7rem;
-            letter-spacing: 2px;
-            opacity: .7;
-            border: 1px dashed currentColor;
-            border-radius: 4px;
-            padding: .1rem .5rem;
-            margin-left: .6rem;
-        }
-
-        .cumul-morning .cumul-sub-label {
-            color: var(--shift-morning);
-        }
-
-        .cumul-afternoon .cumul-sub-label {
-            color: var(--shift-afternoon);
-        }
-
-        .cumul-night .cumul-sub-label {
-            color: var(--shift-night);
-        }
-
-        .shift-summary {
-            display: flex;
-            gap: 2rem;
-            font-size: .75rem;
-            color: var(--text-muted);
-        }
-
-        .sum-item {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
-
-        .sum-val {
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 1.1rem;
-        }
-
-        /* ── Table ──────────────────────────────── */
-        .table-wrap {
-            overflow-x: auto;
-            background: var(--bg-panel);
-        }
-
-        table.prod-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #071426;
-            color: #00e5ff;
-            font-family: 'Exo 2', sans-serif;
-            text-align: center;
-            min-width: 900px;
-        }
-
-        .prod-table th, .prod-table td {
-            border: 1px solid rgba(0,255,255,.08);
-            padding: 10px;
-        }
-
-        .group-head {
-            background: #081b33;
-            color: #00e5ff;
-            font-size: 18px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .sub-head {
-            background: #0c2947;
-            color: #00ffc8;
-            font-size: 13px;
-        }
-
-        .group-head-total {
-            background: #1a1035;
-            color: #c47aff;
-            font-size: 16px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border-left: 2px solid rgba(196,122,255,.4) !important;
-        }
-
-        .sub-head-total {
-            background: #150d2a;
-            color: #d49aff;
-            font-size: 13px;
-            border-left: 2px solid rgba(196,122,255,.2) !important;
-        }
-
-        .date-col {
-            background: #0a1e35;
-            color: #5fa8d3;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: .8rem;
-            white-space: nowrap;
-        }
-
-        .hour-cell {
-            background: #182b47;
-            color: #9cc7ff;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        /* cumulative date row — slightly different bg */
-        .cumul-date-cell {
-            background: #0d1f38 !important;
-            color: #7ab8e8 !important;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: .85rem;
-            white-space: nowrap;
-            font-weight: 700;
-        }
-
-        .target-cell {
-            background: rgba(0,180,255,.08);
-            color: #00cfff;
-            font-weight: 600;
-        }
-
-        .actual-ok {
-            background: rgba(0,255,170,.08);
-            color: #00ffbf;
-            font-weight: bold;
-        }
-
-        .actual-warn {
-            background: rgba(255,193,7,.08);
-            color: #ffd54f;
-            font-weight: bold;
-        }
-
-        .actual-bad {
-            background: rgba(255,0,85,.08);
-            color: #ff4f7b;
-            font-weight: bold;
-        }
-
-        /* inline TOTAL column */
-        .cumul-target {
-            background: rgba(196,122,255,.08) !important;
-            color: #d4a8ff !important;
-            font-weight: 700 !important;
-        }
-
-        .cumul-ok {
-            background: rgba(0,255,170,.06) !important;
-            color: #00ffbf !important;
-            font-weight: 700 !important;
-        }
-
-        .cumul-warn {
-            background: rgba(255,193,7,.06) !important;
-            color: #ffd54f !important;
-            font-weight: 700 !important;
-        }
-
-        .cumul-bad {
-            background: rgba(255,0,85,.06) !important;
-            color: #ff4f7b !important;
-            font-weight: 700 !important;
-        }
-
-        /* daily-cumulative tab rows */
-        .day-cumul-row td {
-            border-top: 1px solid rgba(255,255,255,.1) !important;
-        }
-
-        .prod-table tbody tr:hover {
-            background: rgba(0,255,255,.025);
-            transition: .2s;
-        }
-
-        /* empty */
-        .empty-state {
-            padding: 3rem;
-            text-align: center;
-            color: var(--text-muted);
-            font-family: 'Share Tech Mono', monospace;
-            font-size: .9rem;
-            letter-spacing: 2px;
-        }
-
-            .empty-state i {
-                font-size: 2.5rem;
-                color: var(--accent-blue);
-                margin-bottom: 1rem;
-                opacity: .4;
-            }
-
-        /* ── Footer ─────────────────────────────── */
-        .app-footer {
-            padding: 1rem 2rem;
-            border-top: 1px solid var(--border-glow);
-            background: var(--bg-panel);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: .7rem;
-            color: var(--text-muted);
-            letter-spacing: 1px;
-        }
-
-        ::-webkit-scrollbar {
-            height: 5px;
-            width: 5px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-base);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(0,200,255,.3);
-            border-radius: 3px;
-        }
+            --bg: #f3f6fa; --surface: #ffffff; --ink: #16243a; --muted: #5b6b82; --line: #d8e0ea; --head: #eaf0f7;
+            --blue: #1769c2;
+            --ok: #11743f; --ok-bg: #e3f6ec; --warn: #8a5a00; --warn-bg: #fff4d6; --bad: #b4233f; --bad-bg: #fde8ec;
+            --vol: #1a5fb4; --vol-bg: #e8f1fc; --vol-cell: #f4f8fe;
+            --fct: #6b3fb0; --fct-bg: #f0eafa; --fct-cell: #f8f5fd;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; }
+        body { background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; min-height: 100vh; }
+        .num, td, .info-chip span { font-variant-numeric: tabular-nums; }
+
+        .s-day       { --accent: #1769c2; --tint: #e8f1fc; }
+        .s-morning   { --accent: #b45f00; --tint: #fff1dc; }
+        .s-afternoon { --accent: #0a7f6f; --tint: #e0f5f1; }
+        .s-night     { --accent: #4a5a8a; --tint: #e8ecf6; }
+
+        .app-header { background: var(--surface); border-bottom: 1px solid var(--line); padding: .9rem 2rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+        .brand { display: flex; align-items: center; gap: 1rem; }
+        .brand-icon { width: 40px; height: 40px; background: var(--blue); color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+        .brand-title { font-size: 1.35rem; font-weight: 700; }
+        .brand-sub { font-size: .85rem; color: var(--muted); }
+        .header-logo { height: 38px; }
+        .back-btn { border: 1px solid var(--line); color: var(--blue); background: var(--surface); border-radius: 8px; padding: .45rem 1rem; font-size: .9rem; font-weight: 600; text-decoration: none; display: flex; gap: .5rem; align-items: center; }
+        .back-btn:hover { background: var(--head); color: var(--blue); }
+
+        .info-bar { padding: .7rem 2rem; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; gap: 2rem; flex-wrap: wrap; align-items: center; }
+        .info-chip { font-size: .85rem; color: var(--muted); display: flex; gap: .45rem; align-items: center; }
+        .info-chip span { color: var(--ink); font-weight: 600; }
+
+        .shift-tabs { display: flex; flex-wrap: wrap; background: var(--surface); border-bottom: 1px solid var(--line); padding: 0 2rem; }
+        .tab-divider { width: 1px; background: var(--line); margin: .5rem .7rem; }
+        .shift-tab { display: flex; align-items: center; gap: .5rem; padding: .8rem 1.1rem; font-size: .92rem; font-weight: 600; color: var(--muted); border: 0; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; }
+        .shift-tab:hover { color: var(--ink); }
+        .shift-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--tint); }
+        .tab-badge { font-size: .72rem; padding: .1rem .45rem; border-radius: 4px; background: var(--tint); color: var(--accent); font-family: 'IBM Plex Mono', monospace; }
+        .cumul-badge { font-size: .65rem; padding: .08rem .35rem; border-radius: 4px; border: 1px dashed var(--accent); color: var(--accent); }
+
+        .main-content { padding: 1.5rem 2rem; }
+        .shift-panel { display: none; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: var(--surface); box-shadow: 0 2px 10px rgba(22,36,58,.06); }
+        .shift-panel.visible { display: block; }
+        .shift-header { padding: .9rem 1.5rem; display: flex; align-items: center; justify-content: space-between; background: var(--tint); border-bottom: 3px solid var(--accent); }
+        .shift-title-group { display: flex; align-items: center; gap: 1rem; color: var(--accent); }
+        .shift-name { font-size: 1.2rem; font-weight: 700; }
+        .shift-time { font-size: .85rem; color: var(--muted); }
+        .shift-summary { display: flex; gap: 2rem; }
+        .sum-item { display: flex; flex-direction: column; align-items: flex-end; font-size: .72rem; color: var(--muted); }
+        .sum-val { font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--ink); }
+
+        .table-wrap { overflow-x: auto; }
+        table.prod-table { width: 100%; border-collapse: collapse; text-align: center; min-width: 900px; }
+        .prod-table th, .prod-table td { border: 1px solid var(--line); padding: 9px 10px; }
+        .corner-head { background: var(--head); color: var(--muted); font-weight: 600; width: 110px; }
+        .group-head { background: var(--head); color: var(--ink); font-size: 1.05rem; font-weight: 700; }
+        .sub-head { background: #f5f8fc; color: var(--muted); font-size: .8rem; font-weight: 600; }
+        .date-col { background: var(--head); color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: .85rem; white-space: nowrap; }
+        .hour-cell { background: #f5f8fc; font-weight: 600; }
+        .target-cell { color: var(--blue); font-weight: 600; }
+        td.ok { background: var(--ok-bg); color: var(--ok); font-weight: 600; }
+        td.warn { background: var(--warn-bg); color: var(--warn); font-weight: 600; }
+        td.bad { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+        .total-row td { font-weight: 700; border-top: 2px solid var(--ink); }
+
+        /* VOL1 and FCT3 shading in the cumulative tables */
+        th.g-vol { background: var(--vol-bg); color: var(--vol); border-bottom: 2px solid var(--vol); }
+        th.g-fct { background: var(--fct-bg); color: var(--fct); border-bottom: 2px solid var(--fct); }
+        th.g-vol small, th.g-fct small { display: block; font-size: .72rem; font-weight: 600; opacity: .85; }
+        td.g-vol.target-cell { background: var(--vol-cell); color: var(--vol); }
+        td.g-fct.target-cell { background: var(--fct-cell); color: var(--fct); }
+        .g-first { border-left: 3px solid var(--line) !important; }
+
+        .empty-state { padding: 3rem; text-align: center; color: var(--muted); }
+        .empty-state i { font-size: 2rem; display: block; margin-bottom: .8rem; opacity: .5; }
+        .app-footer { padding: 1rem 2rem; border-top: 1px solid var(--line); background: var(--surface); display: flex; justify-content: space-between; font-size: .8rem; color: var(--muted); }
     </style>
 </head>
 <body>
 
-    <!-- ── Header ──────────────────────────────────────────── -->
     <header class="app-header">
         <div class="brand">
             <div class="brand-icon"><i class="fas fa-history"></i></div>
             <div>
-                <div class="brand-title">PRODUCTION HISTORY</div>
+                <div class="brand-title">Production history</div>
                 <div class="brand-sub">Date range report</div>
             </div>
-            <div>
-                <img src="@Url.Content("~/Images/syrma-logo.png")" class="header-logo" alt="Logo" style="width:25%;" />
-            </div>
+            <img src="@Url.Content("~/Images/syrma-logo.png")" class="header-logo" alt="Logo" />
         </div>
-        <a href="/Home/Dashboard" class="back-btn">
-            <i class="fas fa-arrow-left"></i> Back to Live Dashboard
-        </a>
+        <a href="/Home/Dashboard" class="back-btn"><i class="fas fa-arrow-left"></i> Back to live dashboard</a>
     </header>
 
-    <!-- ── Info Bar ─────────────────────────────────────────── -->
     <div class="info-bar">
         <div class="info-chip"><i class="fas fa-box"></i> Product: <span>@Model.Product</span></div>
         <div class="info-chip"><i class="fas fa-calendar-day"></i> From: <span>@Model.FromDate</span></div>
         <div class="info-chip"><i class="fas fa-calendar-check"></i> To: <span>@Model.ToDate</span></div>
-        <div class="info-chip ms-auto">
-            <i class="fas fa-database"></i> Total Records:
-            <span>@(Model.MorningShift.Count + Model.AfternoonShift.Count + Model.NightShift.Count)</span>
-        </div>
+        <div class="info-chip ms-auto"><i class="fas fa-database"></i> Total records: <span>@(Model.MorningShift.Count + Model.AfternoonShift.Count + Model.NightShift.Count)</span></div>
     </div>
 
-    <!-- ── Tab Bar (6 tabs: 3 hourly + divider + 3 cumulative) ── -->
     <div class="shift-tabs">
-
-        @* ── Hourly tabs ── *@
         @foreach (var shift in allShifts)
         {
-            var metrics = shiftData[shift];
-            decimal totTgt = metrics.Where(m => m.TesterGroup != "TOTAL").Sum(m => m.Target);
-            decimal totAct = metrics.Where(m => m.TesterGroup != "TOTAL").Sum(m => m.Actual);
-            double pct = totTgt > 0 ? Math.Round((double)totAct / (double)totTgt * 100, 0) : 0;
-
-            <button class="shift-tab" data-panel="panel-@shift" data-color="@shift.ToLower()" onclick="switchTab(this,'@shift.ToLower()')">
+            var (tT, tA, _) = SumOf(shiftData[shift], tg => true);
+            <button class="shift-tab s-@shift.ToLower()" data-panel="panel-@shift" onclick="switchTab(this)">
                 <i class="fas @shiftIcons[shift]"></i> @shift
-                <span class="tab-badge badge-@shift.ToLower()">@pct%</span>
+                <span class="tab-badge">@Pct(tT, tA)%</span>
             </button>
         }
 
         <div class="tab-divider"></div>
 
-        <button class="shift-tab"
-                data-panel="panel-daywise"
-                data-color="daywise"
-                onclick="switchTab(this,'daywise')">
-            <i class="fas fa-calendar-alt"></i>
-            Day Wise Cumulative
-        </button>
-
-        @* ── Cumulative tabs ── *@
-        @foreach (var shift in allShifts)
+        @foreach (var p in cumulPanels)
         {
-            var metrics = shiftData[shift];
-            decimal totTgt = metrics.Where(m => m.TesterGroup != "TOTAL").Sum(m => m.Target);
-            decimal totAct = metrics.Where(m => m.TesterGroup != "TOTAL").Sum(m => m.Actual);
-            double pct = totTgt > 0 ? Math.Round((double)totAct / (double)totTgt * 100, 0) : 0;
-
-            <button class="shift-tab" data-panel="panel-cumul-@shift" data-color="cumul-@shift.ToLower()" onclick="switchTab(this,'cumul-@shift.ToLower()')">
-                <i class="fas @shiftIcons[shift]"></i> @shift
-                <span class="cumul-badge badge-@shift.ToLower()">CUMUL</span>
-                <span class="tab-badge badge-@shift.ToLower()">@pct%</span>
+            var (tT, tA, _) = SumOf(p.Rows, tg => cumulGroups.Any(g => g.Pick(tg)));
+            <button class="shift-tab @p.Css" data-panel="@p.Id" onclick="switchTab(this)">
+                @if (p.Id == "panel-day")
+                {
+                    <i class="fas fa-calendar-days"></i> <span>Day-wise cumulative</span>
+                }
+                else
+                {
+                    var sn = p.Id.Replace("panel-cumul-", "");
+                    <i class="fas @shiftIcons[sn]"></i> <span>@sn</span> <span class="cumul-badge">CUMUL</span>
+                }
+                <span class="tab-badge">@Pct(tT, tA)%</span>
             </button>
         }
     </div>
 
-    <!-- ── Main Content ─────────────────────────────────────── -->
     <main class="main-content">
 
-        @* ════════════════════════════════════════════════════════
-       SECTION A — Hourly breakdown panels (existing)
-       ════════════════════════════════════════════════════════ *@
+        @* ═══ Hourly panels: every hour shows a target for every tester ═══ *@
         @foreach (var shift in allShifts)
         {
-            var metrics = shiftData[shift];
+            var rows = shiftData[shift].Where(m => m.TesterGroup != "TOTAL").ToList();
+            var testers = rows.Select(x => x.TesterGroup).Distinct().OrderBy(tg => GetTesterOrder(tg)).ToList();
+            var byDate = rows.GroupBy(x => x.DateValue).OrderBy(g => DateKey(g.Key)).ToList();
+            var (tT, tA, _) = SumOf(rows, tg => true);
+            var tPct = Pct(tT, tA);
 
-            var testerGroups = metrics
-            .Where(m => m.TesterGroup != "TOTAL")
-            .Select(x => x.TesterGroup).Distinct()
-            .OrderBy(tg => GetTesterOrder(tg)).ToList();
-
-            var byDate = metrics
-            .Where(m => m.TesterGroup != "TOTAL")
-            .GroupBy(x => x.DateValue).OrderBy(g => g.Key).ToList();
-
-            decimal totTgt = metrics.Where(m => m.TesterGroup != "TOTAL").Sum(m => m.Target);
-            decimal totAct = metrics.Where(m => m.TesterGroup != "TOTAL").Sum(m => m.Actual);
-            double pct = totTgt > 0 ? Math.Round((double)totAct / (double)totTgt * 100, 0) : 0;
-            var pctCls = pct >= 95 ? "#00ffbf" : pct >= 80 ? "#ffd54f" : "#ff4f7b";
-
-            <div class="shift-panel @shiftClasses[shift]" id="panel-@shift">
+            <div class="shift-panel s-@shift.ToLower()" id="panel-@shift">
                 <div class="shift-header">
                     <div class="shift-title-group">
-                        <i class="fas @shiftIcons[shift] shift-icon"></i>
+                        <i class="fas @shiftIcons[shift]" style="font-size:1.3rem"></i>
                         <div>
                             <div class="shift-name">@shiftLabels[shift]</div>
                             <div class="shift-time">@shiftTimes[shift]</div>
                         </div>
                     </div>
                     <div class="shift-summary">
-                        <div class="sum-item"><span class="sum-val" style="color:@pctCls">@pct%</span><span style="opacity:.6;font-size:.7rem;letter-spacing:1px;">OVERALL</span></div>
-                        @* <div class="sum-item"><span class="sum-val">@totTgt.ToString("0")</span><span style="opacity:.6;font-size:.7rem;letter-spacing:1px;">TARGET</span></div>
-                        <div class="sum-item"><span class="sum-val" style="color:@pctCls">@totAct.ToString("0")</span><span style="opacity:.6;font-size:.7rem;letter-spacing:1px;">ACTUAL</span></div> *@
+                        <div class="sum-item"><span class="sum-val" style="color:@PctColor(tPct)">@tPct%</span>Overall</div>
+                     @*    <div class="sum-item"><span class="sum-val">@tT.ToString("0")</span>Target</div>
+                        <div class="sum-item"><span class="sum-val" style="color:@PctColor(tPct)">@tA.ToString("0")</span>Actual</div> *@
                     </div>
                 </div>
-
                 <div class="table-wrap">
-                    @if (!metrics.Any())
+                    @if (!rows.Any())
                     {
-                        <div class="empty-state"><div><i class="fas fa-inbox"></i></div>NO DATA FOR THIS SHIFT IN THE SELECTED DATE RANGE</div>
+                        <div class="empty-state"><i class="fas fa-inbox"></i>No data for this shift in the selected date range</div>
                     }
                     else
                     {
                         <table class="prod-table">
                             <thead>
                                 <tr>
-                                    <th rowspan="2" style="background:#0a1e35;color:#5fa8d3;width:110px;font-family:'Share Tech Mono',monospace;">DATE</th>
-                                    <th rowspan="2" style="background:#14243b;color:#8fb7ff;width:100px;font-family:'Share Tech Mono',monospace;">HOUR</th>
-                                    @foreach (var tg in testerGroups)
-                                    {
-                                        <th colspan="2" class="group-head">@tg</th>
-                                    }
+                                    <th rowspan="2" class="corner-head">Date</th>
+                                    <th rowspan="2" class="corner-head">Hour</th>
+                                    @foreach (var tg in testers) { <th colspan="2" class="group-head">@tg</th> }
                                 </tr>
                                 <tr>
-                                    @foreach (var tg in testerGroups)
+                                    @foreach (var tg in testers)
                                     {
-                                        <th class="sub-head">TARGET</th>
-                                        <th class="sub-head">ACTUAL</th>
-                                       @*  <th class="sub-head">GAP</th>
-                                        <th class="sub-head">LOSS%</th> *@
+                                        <th class="sub-head">T</th>
+                                        <th class="sub-head">A</th>
+                                      @*   <th class="sub-head">Gap</th>
+                                        <th class="sub-head">Loss %</th> *@
                                     }
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var dayGroup in byDate)
+                                @foreach (var day in byDate)
                                 {
-                                    var hourSlots = dayGroup.GroupBy(x => x.HourRange)
-                                    .Select(g => new { Slot = g.Key, Range = g.First().HourRange })
-                                    .OrderBy(x => x.Slot).ToList();
-                                    int rowCount = hourSlots.Count;
-
-                                    for (int hi = 0; hi < hourSlots.Count; hi++)
+                                    var hours = day.Select(x => x.HourRange).Distinct().OrderBy(h => h).ToList();
+                                    for (int hi = 0; hi < hours.Count; hi++)
                                     {
-                                        var hour = hourSlots[hi];
-
                                         <tr>
-                                            @if (hi == 0)
+                                            @if (hi == 0) { <td class="date-col" rowspan="@hours.Count">@day.Key</td> }
+                                            <td class="hour-cell">@hours[hi]</td>
+                                            @foreach (var tg in testers)
                                             {
-                                                <td class="date-col" rowspan="@rowCount">@dayGroup.Key</td>
-                                            }
-                                            <td class="hour-cell">@hour.Range</td>
-                                            @foreach (var tg in testerGroups)
-                                            {
-                                                var row = dayGroup.FirstOrDefault(x => x.HourRange == hour.Range && x.TesterGroup == tg);
-                                                decimal tgt = row?.Target ?? 0;
-                                                decimal act = row?.Actual ?? 0;
-                                                decimal gap = tgt - act;
-                                                decimal lossP = tgt > 0 ? Math.Round((gap / tgt) * 100, 2) : 0;
-                                                double p = tgt > 0 ? (double)act / (double)tgt * 100 : 0;
-                                                var cls = p >= 95 ? "actual-ok" : p >= 80 ? "actual-warn" : "actual-bad";
+                                                var row = day.FirstOrDefault(x => x.HourRange == hours[hi] && x.TesterGroup == tg);
+                                                decimal tgt = row?.Target ?? 0, act = row?.Actual ?? 0, gap = tgt - act;
+                                                decimal loss = tgt > 0 ? Math.Round(gap / tgt * 100, 2) : 0;
+                                                var cls = Cls(tgt, act);
                                                 <td class="target-cell">@(row == null ? "-" : tgt.ToString("0"))</td>
                                                 <td class="@cls">@(row == null ? "-" : act.ToString("0"))</td>
                                                @*  <td class="@cls">@(row == null ? "-" : gap.ToString("0"))</td>
-                                                <td class="@cls">@(row == null ? "-" : lossP.ToString("0.##") + "%")</td> *@
+                                                <td class="@cls">@(row == null ? "-" : loss.ToString("0.##") + "%")</td> *@
                                             }
                                         </tr>
                                     }
@@ -832,98 +270,82 @@
             </div>
         }
 
-        @* ════════════════════════════════════════════════════════
-       SECTION B — Daily Cumulative panels (new — 1 row per date)
-       ════════════════════════════════════════════════════════ *@
-        @foreach (var shift in allShifts)
+        @* ═══ Cumulative panels: day-wise (3 shifts added) + one per shift. VOL1 and FCT3 only, never added together ═══ *@
+        @foreach (var p in cumulPanels)
         {
-            var metrics = shiftData[shift];
+            var dates = p.Rows.Where(m => m.TesterGroup != "TOTAL").Select(m => m.DateValue).Distinct().OrderBy(d => DateKey(d)).ToList();
+            var (tT, tA, _) = SumOf(p.Rows, tg => cumulGroups.Any(g => g.Pick(tg)));
+            var tPct = Pct(tT, tA);
 
-            var testerGroups = metrics
-            .Where(m => m.TesterGroup != "TOTAL")
-            .Select(x => x.TesterGroup).Distinct()
-            .OrderBy(tg => GetTesterOrder(tg)).ToList();
-
-            // Group detail rows by Date, then aggregate each TesterGroup across all hours
-            var byDate = metrics
-            .Where(m => m.TesterGroup != "TOTAL")
-            .GroupBy(x => x.DateValue)
-            .OrderBy(g => g.Key)
-            .ToList();
-
-            decimal totTgt = metrics.Where(m => m.TesterGroup != "TOTAL").Sum(m => m.Target);
-            decimal totAct = metrics.Where(m => m.TesterGroup != "TOTAL").Sum(m => m.Actual);
-            double pct = totTgt > 0 ? Math.Round((double)totAct / (double)totTgt * 100, 0) : 0;
-            var pctCls = pct >= 95 ? "#00ffbf" : pct >= 80 ? "#ffd54f" : "#ff4f7b";
-
-            var panelClass = "cumul-" + shift.ToLower();
-
-            <div class="shift-panel @panelClass" id="panel-cumul-@shift">
+            <div class="shift-panel @p.Css" id="@p.Id">
                 <div class="shift-header">
                     <div class="shift-title-group">
-                        <i class="fas @shiftIcons[shift] shift-icon"></i>
-                        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
-                            <div>
-                                <div class="shift-name" style="display:flex;align-items:center;gap:.6rem;">
-                                    @shiftLabels[shift]
-                                    <span class="cumul-sub-label">DAILY CUMULATIVE</span>
-                                </div>
-                                <div class="shift-time">@shiftTimes[shift] &nbsp;·&nbsp; Aggregated per day</div>
-                            </div>
+                        <i class="fas @(p.Id == "panel-day" ? "fa-calendar-days" : shiftIcons[p.Id.Replace("panel-cumul-", "")])" style="font-size:1.3rem"></i>
+                        <div>
+                            <div class="shift-name">@p.Title</div>
+                            <div class="shift-time">@p.Sub</div>
                         </div>
                     </div>
                     <div class="shift-summary">
-                        <div class="sum-item"><span class="sum-val" style="color:@pctCls">@pct%</span><span style="opacity:.6;font-size:.7rem;letter-spacing:1px;">OVERALL</span></div>
-                        @* <div class="sum-item"><span class="sum-val">@totTgt.ToString("0")</span><span style="opacity:.6;font-size:.7rem;letter-spacing:1px;">TARGET</span></div>
-                        <div class="sum-item"><span class="sum-val" style="color:@pctCls">@totAct.ToString("0")</span><span style="opacity:.6;font-size:.7rem;letter-spacing:1px;">ACTUAL</span></div> *@
+                        <div class="sum-item"><span class="sum-val" style="color:@PctColor(tPct)">@tPct%</span>Overall</div>
                     </div>
                 </div>
-
                 <div class="table-wrap">
-                    @if (!metrics.Any())
+                    @if (!dates.Any())
                     {
-                        <div class="empty-state"><div><i class="fas fa-inbox"></i></div>NO DATA FOR THIS SHIFT IN THE SELECTED DATE RANGE</div>
+                        <div class="empty-state"><i class="fas fa-inbox"></i>No data in the selected date range</div>
                     }
                     else
                     {
                         <table class="prod-table">
                             <thead>
                                 <tr>
-                                    <th rowspan="2" style="background:#0a1e35;color:#5fa8d3;width:130px;font-family:'Share Tech Mono',monospace;">DATE</th>
-                                    @foreach (var tg in testerGroups)
-                                    {
-                                        <th colspan="2" class="group-head">@tg</th>
-                                    }
+                                    <th rowspan="2" class="corner-head">Date</th>
+                                    @foreach (var g in cumulGroups) { <th colspan="2" class="group-head @g.Css g-first">@g.Name<small>@g.Label</small></th> }
                                 </tr>
                                 <tr>
-                                    @foreach (var tg in testerGroups)
+                                    @foreach (var g in cumulGroups)
                                     {
-                                        <th class="sub-head">TARGET</th>
-                                        <th class="sub-head">ACTUAL</th>
-                                      @*   <th class="sub-head">GAP</th>
-                                        <th class="sub-head">LOSS%</th> *@
+                                        <th class="sub-head g-first">T</th>
+                                        <th class="sub-head">A</th>
+                                       @*  <th class="sub-head">Gap</th>
+                                        <th class="sub-head">Loss %</th> *@
                                     }
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var dayGroup in byDate)
+                                @foreach (var d in dates)
                                 {
-                                    <tr class="day-cumul-row">
-                                        <td class="cumul-date-cell">@dayGroup.Key</td>
-
-                                        @foreach (var tg in testerGroups)
+                                    var dayRows = p.Rows.Where(m => m.DateValue == d).ToList();
+                                    <tr>
+                                        <td class="date-col">@d</td>
+                                        @foreach (var g in cumulGroups)
                                         {
-                                            var rows = dayGroup.Where(x => x.TesterGroup == tg).ToList();
-                                            decimal tgt = rows.Sum(x => x.Target);
-                                            decimal act = rows.Sum(x => x.Actual);
-                                            decimal gap = tgt - act;
-                                            decimal lossP = tgt > 0 ? Math.Round((gap / tgt) * 100, 2) : 0;
-                                            double p = tgt > 0 ? (double)act / (double)tgt * 100 : 0;
-                                            var cls = p >= 95 ? "actual-ok" : p >= 80 ? "actual-warn" : "actual-bad";
-                                            <td class="target-cell">@(rows.Count == 0 ? "-" : tgt.ToString("0"))</td>
-                                            <td class="@cls">@(rows.Count == 0 ? "-" : act.ToString("0"))</td>
-                                           @*  <td class="@cls">@(rows.Count == 0 ? "-" : gap.ToString("0"))</td>
-                                            <td class="@cls">@(rows.Count == 0 ? "-" : lossP.ToString("0.##") + "%")</td> *@
+                                            var (t, a, n) = SumOf(dayRows, g.Pick);
+                                            var gap = t - a;
+                                            var loss = t > 0 ? Math.Round(gap / t * 100, 2) : 0;
+                                            var cls = Cls(t, a);
+                                            <td class="target-cell @g.Css g-first">@(n == 0 ? "-" : t.ToString("0"))</td>
+                                            <td class="@cls">@(n == 0 ? "-" : a.ToString("0"))</td>
+                                           @*  <td class="@cls">@(n == 0 ? "-" : gap.ToString("0"))</td>
+                                            <td class="@cls">@(n == 0 ? "-" : loss.ToString("0.##") + "%")</td> *@
+                                        }
+                                    </tr>
+                                }
+                                @if (dates.Count > 1)
+                                {
+                                    <tr class="total-row">
+                                        <td class="date-col">Range total</td>
+                                        @foreach (var g in cumulGroups)
+                                        {
+                                            var (t, a, _) = SumOf(p.Rows, g.Pick);
+                                            var gap = t - a;
+                                            var loss = t > 0 ? Math.Round(gap / t * 100, 2) : 0;
+                                            var cls = Cls(t, a);
+                                            <td class="target-cell @g.Css g-first">@t.ToString("0")</td>
+                                            <td class="@cls">@a.ToString("0")</td>
+                                            <td class="@cls">@gap.ToString("0")</td>
+                                            <td class="@cls">@loss.ToString("0.##")%</td>
                                         }
                                     </tr>
                                 }
@@ -931,92 +353,29 @@
                         </table>
                     }
                 </div>
-
-               
             </div>
         }
-
-
-       
-
-        @* ════════════════════════════════════════════════════════
-           SECTION C — Day Wise Cumulative (single panel, once)
-           ════════════════════════════════════════════════════════ *@
-        <div class="shift-panel" id="panel-daywise">
-            <div class="shift-header">
-                <div class="shift-title-group">
-                    <i class="fas fa-calendar-alt shift-icon"></i>
-                    <div>
-                        <div class="shift-name">DAY WISE CUMULATIVE</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="table-wrap">
-                <table class="prod-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Target</th>
-                            <th>Actual</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in Model.DayWiseCumulative)
-                        {
-                            <tr>
-                                <td>@row.DateValue</td>
-                                <td>@row.Target</td>
-                                <td>@row.Actual</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </main>
 
-    <!-- ── Footer ───────────────────────────────────────────── -->
     <footer class="app-footer">
-        <span>SyrmaSGS HoneyWell — History Report</span>
-        <span>@Model.FromDate &nbsp;→&nbsp; @Model.ToDate</span>
+        <span>SyrmaSGS Honeywell — history report</span>
+        <span>@Model.FromDate to @Model.ToDate</span>
     </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
     <script>
-        // All 6 panel IDs
-        const ALL_PANELS = [
-            'panel-Morning', 'panel-Afternoon', 'panel-Night',
-            'panel-cumul-Morning', 'panel-cumul-Afternoon', 'panel-cumul-Night','panel-daywise'
-        ];
-
-        function switchTab(btn, colorKey) {
-            const targetId = btn.dataset.panel;
-
-            // Show / hide panels
-            ALL_PANELS.forEach(function (id) {
-                const el = document.getElementById(id);
-                if (el) el.classList.toggle('visible', id === targetId);
+        function switchTab(btn) {
+            document.querySelectorAll('.shift-panel').forEach(function (p) {
+                p.classList.toggle('visible', p.id === btn.dataset.panel);
             });
-
-            // Reset all tab active classes
             document.querySelectorAll('.shift-tab').forEach(function (t) {
-                ['morning','afternoon','night',
-                 'cumul-morning','cumul-afternoon','cumul-night'].forEach(function (c) {
-                    t.classList.remove('active-' + c);
-                });
+                t.classList.toggle('active', t === btn);
             });
-
-            // Set active class on clicked tab
-            btn.classList.add('active-' + colorKey);
         }
-
-        // Activate Morning hourly tab on load
         document.addEventListener('DOMContentLoaded', function () {
-            const firstTab = document.querySelector('[data-panel="panel-Morning"]');
-            if (firstTab) switchTab(firstTab, 'morning');
+            var first = document.querySelector('[data-panel="panel-Morning"]');
+            if (first) switchTab(first);
         });
     </script>
-
 </body>
 </html>

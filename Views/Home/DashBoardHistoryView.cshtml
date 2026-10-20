@@ -750,8 +750,8 @@
                     </div>
                     <div class="shift-summary">
                         <div class="sum-item"><span class="sum-val" style="color:@pctCls">@pct%</span><span style="opacity:.6;font-size:.7rem;letter-spacing:1px;">OVERALL</span></div>
-                        <div class="sum-item"><span class="sum-val">@totTgt.ToString("0")</span><span style="opacity:.6;font-size:.7rem;letter-spacing:1px;">TARGET</span></div>
-                        <div class="sum-item"><span class="sum-val" style="color:@pctCls">@totAct.ToString("0")</span><span style="opacity:.6;font-size:.7rem;letter-spacing:1px;">ACTUAL</span></div>
+                       @*  <div class="sum-item"><span class="sum-val">@totTgt.ToString("0")</span><span style="opacity:.6;font-size:.7rem;letter-spacing:1px;">TARGET</span></div>
+                        <div class="sum-item"><span class="sum-val" style="color:@pctCls">@totAct.ToString("0")</span><span style="opacity:.6;font-size:.7rem;letter-spacing:1px;">ACTUAL</span></div> *@
                     </div>
                 </div>
 
@@ -769,16 +769,16 @@
                                     <th rowspan="2" style="background:#14243b;color:#8fb7ff;width:100px;font-family:'Share Tech Mono',monospace;">HOUR</th>
                                     @foreach (var tg in testerGroups)
                                     {
-                                        <th colspan="4" class="group-head">@tg</th>
+                                        <th colspan="2" class="group-head">@tg</th>
                                     }
                                 </tr>
                                 <tr>
                                     @foreach (var tg in testerGroups)
                                     {
-                                        <th class="sub-head">TARGET</th>
-                                        <th class="sub-head">ACTUAL</th>
-                                        <th class="sub-head">GAP</th>
-                                        <th class="sub-head">LOSS%</th>
+                                        <th class="sub-head">T</th>
+                                        <th class="sub-head">A</th>
+                                      @*   <th class="sub-head">GAP</th>
+                                        <th class="sub-head">LOSS%</th> *@
                                     }
                                 </tr>
                             </thead>
@@ -811,8 +811,8 @@
                                                 var cls = p >= 95 ? "actual-ok" : p >= 80 ? "actual-warn" : "actual-bad";
                                                 <td class="target-cell">@(row == null ? "-" : tgt.ToString("0"))</td>
                                                 <td class="@cls">@(row == null ? "-" : act.ToString("0"))</td>
-                                                <td class="@cls">@(row == null ? "-" : gap.ToString("0"))</td>
-                                                <td class="@cls">@(row == null ? "-" : lossP.ToString("0.##") + "%")</td>
+                                             @*    <td class="@cls">@(row == null ? "-" : gap.ToString("0"))</td>
+                                                <td class="@cls">@(row == null ? "-" : lossP.ToString("0.##") + "%")</td> *@
                                             }
                                         </tr>
                                     }
@@ -884,16 +884,16 @@
                                     <th rowspan="2" style="background:#0a1e35;color:#5fa8d3;width:130px;font-family:'Share Tech Mono',monospace;">DATE</th>
                                     @foreach (var tg in testerGroups)
                                     {
-                                        <th colspan="4" class="group-head">@tg</th>
+                                        <th colspan="2" class="group-head">@tg</th>
                                     }
                                 </tr>
                                 <tr>
                                     @foreach (var tg in testerGroups)
                                     {
-                                        <th class="sub-head">TARGET</th>
-                                        <th class="sub-head">ACTUAL</th>
-                                        <th class="sub-head">GAP</th>
-                                        <th class="sub-head">LOSS%</th>
+                                        <th class="sub-head">T</th>
+                                        <th class="sub-head">A</th>
+                                       @*  <th class="sub-head">GAP</th>
+                                        <th class="sub-head">LOSS%</th> *@
                                     }
                                 </tr>
                             </thead>
@@ -914,8 +914,8 @@
                                             var cls = p >= 95 ? "actual-ok" : p >= 80 ? "actual-warn" : "actual-bad";
                                             <td class="target-cell">@(rows.Count == 0 ? "-" : tgt.ToString("0"))</td>
                                             <td class="@cls">@(rows.Count == 0 ? "-" : act.ToString("0"))</td>
-                                            <td class="@cls">@(rows.Count == 0 ? "-" : gap.ToString("0"))</td>
-                                            <td class="@cls">@(rows.Count == 0 ? "-" : lossP.ToString("0.##") + "%")</td>
+                                           @*  <td class="@cls">@(rows.Count == 0 ? "-" : gap.ToString("0"))</td>
+                                            <td class="@cls">@(rows.Count == 0 ? "-" : lossP.ToString("0.##") + "%")</td> *@
                                         }
                                     </tr>
                                 }
