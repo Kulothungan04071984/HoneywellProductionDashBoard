@@ -196,6 +196,16 @@
             flex-wrap: wrap;
         }
 
+        .arrow-btn {
+            cursor: pointer;
+            border: none;
+            background: #007bff;
+            color: white;
+           /*  padding: 6px 12px;
+            font-size: 18px; */
+            border-radius: 4px;
+        }
+
         .product-label {
             font-size: 0.75rem;
             color: var(--text-muted);
@@ -757,8 +767,8 @@
         <div class="brand">
             <div class="brand-icon"><i class="fas fa-industry"></i></div>
             <div>
-                <div class="brand-title">HONEYWELL PRODUCTION MONITOR</div>
-                <div class="brand-sub">Real-time shift dashboard</div>
+                <div class="brand-title">HONEYWELL PRODUCTION MONITOR - V200</div>
+               @*  <div class="brand-sub">Real-time shift dashboard</div> *@
             </div>
         </div>
         <div class="header-meta">
@@ -773,11 +783,18 @@
             <div class="refresh-badge">
                 <i class="fas fa-sync-alt"></i>
                 Auto-refresh: <span id="countdown-text">60s</span>
+                <span style="width:1%;">
+                    <button class="arrow-btn" id="toggleBtn"
+                            onclick="toggleProductBar()">
+                        ▼
+                    </button>
+                </span>
             </div>
 
         </div>
     </header>
-    <div class="product-bar">
+    
+    <div class="product-bar" id="productBar">
         <span class="product-label"><i class="fas fa-box me-1"></i> Product</span>
         <div class="product-select-wrapper">
             <select class="product-select" id="productSelect" onchange="changeProduct(this.value)">
@@ -826,13 +843,13 @@
                 <div class="shift-title-group">
                     <i class="fas @shiftIcons[currentShift] shift-icon"></i>
                     <div>
-                        <div class="shift-name">@shiftLabel</div>
-                        <div class="shift-time">@shiftTime</div>
+                        <div class="shift-name">@shiftLabel <span class="shift-time">@shiftTime</span></div>
+                       @*  <div class="shift-time"></div> *@
                     </div>
                 </div>
-                <div class="shift-stats" id="stats-@currentShift">
-                    @* Filled by JS *@
-                </div>
+                @* <div class="shift-stats" id="stats-@currentShift">
+                  
+                </div> *@
             </div>
 
             <div class="table-wrap">
@@ -866,10 +883,10 @@
                                         "FCT1",
                                         "RTC",
                                         "LCD1",
-                                        "LCD2",
                                         "RF1",
                                         "FCT2",
                                         "VOLT",
+                                        "LCD2",
                                         "RF2",
                                         "FCT3"
                                         };
@@ -897,14 +914,39 @@
                     <thead>
 
                         <tr>
-                            <th rowspan="2" class="hour-col">
-                                HOUR
+                            <th rowspan="3" class="hour-col">
+                                HOUR<br/>
+                                <small class="sub-head">Capacity</small>
                             </th>
 
                             @foreach (var tg in testerGroups)
                             {
                                 <th colspan="2" class="group-head">
                                     @tg
+                                </th>
+                              
+                            }
+                           
+                        </tr>
+                        <tr style="line-height:1.5%">
+                      
+
+                            @foreach (var tg in testerGroups)
+                            {
+                                int capacity = 0;
+
+                                if (tg == "FCT1") { capacity = 46; }
+                                else if (tg == "RTC") { capacity = 72; }
+                                else if (tg == "LCD1") { capacity = 60; }
+                                else if (tg == "RF1") { capacity = 49; }
+                                else if (tg == "FCT2") { capacity = 70; }
+                                else if (tg == "VOLT") { capacity = 120; }
+                                else if (tg == "LCD2") { capacity = 61; }
+                                else if (tg == "RF2") { capacity = 42; }
+                                else if (tg == "FCT3") { capacity = 60; }
+
+                                <th colspan="2">
+                                    @capacity
                                 </th>
                             }
                         </tr>
@@ -1003,6 +1045,7 @@
                             }
 
                         </tr>
+                      
 
                         @{
                             var shifts = metrics
@@ -1137,6 +1180,26 @@
     </footer>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
     <script>
+               $(document).ready(function () {
+                $("#productBar").hide();
+                $("#toggleBtn").html("▲");
+               });
+
+                function toggleProductBar() {
+                    debugger;
+                    const bar = document.getElementById("productBar");
+                    const btn = document.getElementById("toggleBtn");
+
+                    if (bar.style.display === "none") {
+                        bar.style.display = "flex";
+                        btn.innerHTML = "▼";
+                        btn.title = "Hide product bar";
+                    } else {
+                        bar.style.display = "none";
+                        btn.innerHTML = "▲";
+                        btn.title = "Show product bar";
+                    }
+                }
                const REFRESH_INTERVAL = 60;   // seconds
                const COLS = ['FCT1','FCT2'];
                const SHIFTS = ['Night','Morning','Afternoon'];
@@ -1304,7 +1367,7 @@
             renderShiftStats(shift, metrics);
         } *@
                        function renderShift(shift, metrics) {
-
+                           debugger;
                    const table = document.getElementById('table-' + shift);
 
                    if (!metrics.length) return;
@@ -1312,42 +1375,149 @@
                    const testerGroups =
                        [...new Set(metrics.map(x => x.testerGroup))];
 
+                               const customOrder = [
+                                "FCT1",
+                                "RTC",
+                                "LCD1",
+                                "RF1",
+                                "FCT2",
+                                "VOLT",
+                                "LCD2",
+                                "RF2",
+                                "FCT3"
+                            ];
+
+        testerGroups.sort((a, b) =>
+            customOrder.indexOf(a) - customOrder.indexOf(b)
+        );
+
                     const hourSlots =
                         [...new Map(
                             metrics.map(x => [x.hourSlot, x.hourRange])
                         ).entries()];
 
-                
+                var capacity=0;
 
-                   let html = `
+                   // let html = `
 
-                       <thead>
+                   //     <thead>
 
-                           <tr>
-                               <th rowspan="2" class="hour-col">
-                                   HOUR
-                               </th>
+                   //         <tr>
+                   //             <th rowspan="3" class="hour-col">
+                   //                 HOUR<br/>
+                   //                       <small  style="font-size:30%;">Capacity</small>
+                   //             </th>
 
-                               ${testerGroups.map(tg =>
-                                   `<th colspan="2" class="group-head">${tg}</th>`
-                               ).join('')}
+                   //             ${testerGroups.map(tg =>
+                   //                 `<th colspan="2" class="group-head">${tg}</th>`
+                                     
+                   //             ).join('')}
+                             
+                   //         </tr>
+                   //             <tr style="line-height:1.5%">
+                   //              ${testerGroups.map(tg =>
+                   //                  if(tg=='FCT1')
+                   //                  {
+                   //                          capacity=46;
+                   //                  }
+                   //                      else if(tg=='RTC'){   capacity=72; }
+                   //                            else if(tg=='LCD1'){   capacity=60; }
+                   //                                 else if(tg=='RF1'){   capacity=49; }
+                   //                                       else if(tg=='FCT2'){   capacity=70; }
+                   //                                             else if(tg=='VOLT'){   capacity=120; }
+                   //                                                    else if(tg=='LCD2'){   capacity=61; }
+                   //                                                          else if(tg=='RF2'){   capacity=42; }
+                   //                                                                 else if(tg=='FCT3'){   capacity=60; }
+                                    
+                   //                              `<th colspan="2" >${capacity}</th>`
+                   //              ).join('')}
+                   //         </tr>
 
-                           </tr>
 
-                           <tr>
+                   //         <tr>
 
-                               ${testerGroups.map(tg => `
-                                   <th class="sub-head">T</th>
-                                   <th class="sub-head">A</th>
+                   //             ${testerGroups.map(tg => `
+                   //                 <th class="sub-head">T</th>
+                   //                 <th class="sub-head">A</th>
                                    
-                               `).join('')}
+                   //             `).join('')}
 
-                           </tr>
+                   //         </tr>
 
-                       </thead>
+                   //     </thead>
 
-                       <tbody>
-                   `;
+                   //     <tbody>
+                   // `;
+
+        let html = `
+
+            <thead>
+
+                <tr>
+                    <th rowspan="3" class="hour-col">
+                        HOUR<br/>
+                              <small class="sub-head">Capacity</small>
+                    </th>
+
+                    ${testerGroups.map(tg =>
+                        `<th colspan="2" class="group-head">${tg}</th>`
+                    ).join('')}
+
+                </tr>
+
+                <tr style="line-height:1.5%">
+
+                    ${testerGroups.map(tg => {
+
+                        let capacity = 0;
+
+                        if (tg == 'FCT1') {
+                            capacity = 46;
+                        }
+                        else if (tg == 'RTC') {
+                            capacity = 72;
+                        }
+                        else if (tg == 'LCD1') {
+                            capacity = 60;
+                        }
+                        else if (tg == 'RF1') {
+                            capacity = 49;
+                        }
+                        else if (tg == 'FCT2') {
+                            capacity = 70;
+                        }
+                        else if (tg == 'VOLT') {
+                            capacity = 120;
+                        }
+                        else if (tg == 'LCD2') {
+                            capacity = 61;
+                        }
+                        else if (tg == 'RF2') {
+                            capacity = 42;
+                        }
+                        else if (tg == 'FCT3') {
+                            capacity = 60;
+                        }
+
+                        return `<th colspan="2">${capacity}</th>`;
+
+                    }).join('')}
+
+                </tr>
+
+                <tr>
+
+                    ${testerGroups.map(tg => `
+                        <th class="sub-head">T</th>
+                        <th class="sub-head">A</th>
+                    `).join('')}
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+        `;
 
                        hourSlots.forEach(([hourSlot, hourRange]) => {
                     // debugger;
@@ -1722,6 +1892,9 @@
                   .then(r => r.json())
                   .then(data => renderShiftStats(CURRENT_SHIFT, data))
                   .catch(() => {});
+
+            
+   
     </script>
 </body>
 </html>
